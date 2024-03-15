@@ -68,6 +68,12 @@ class Unimodal_dataset():
 
 		
 def load_class_data_single(sensor_str, activity_class, train_test_flag, label_rate):
+	"""
+	sensor_str:
+	activity_class:
+	train_test_flag: 
+	label_rate:
+	"""
 
 	data_all_subject = []
 
@@ -250,9 +256,9 @@ def load_data(num_of_total_class, num_per_class, train_test_flag, label_rate):
 	x1 = sensor_data_normalize('inertial', x1)
 	x2 = sensor_data_normalize('skeleton', x2)
 
-	print(x1.shape)
-	print(x2.shape)
-	print(y.shape)
+	print('x1.shape:', x1.shape)
+	print('x2.shape:', x2.shape)
+	print('y.shape:', y.shape)
 
 	return x1, x2, y
 

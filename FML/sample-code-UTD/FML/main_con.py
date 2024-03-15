@@ -82,6 +82,7 @@ def parse_option():
                         help='using synchronized batch normalization')
     parser.add_argument('--warm', action='store_true',
                         help='warm-up for large batch training')
+    parser.add_argument('--trial',type=bool,default=True)
 
     opt = parser.parse_args()
 
@@ -133,8 +134,13 @@ def set_loader(opt):
 
     #load labeled train and test data
     x_train_1, x_train_2, y_train = data.load_data(opt.num_class, num_of_train_unlabel, 3, opt.label_rate)
-    print(x_train_1.shape)
-    print(x_train_2.shape)
+    # print('x_train_1.shape:', x_train_1.shape)
+    # print('x_train_2.shape:', x_train_2.shape)
+
+    # TODO: temp: make the total number of samples can be evenly divided by the batch size
+    x_train_1 = x_train_1[:512]
+    x_train_2 = x_train_2[:512]
+    y_train = y_train[:512]
 
     train_dataset = data.Multimodal_dataset(x_train_1, x_train_2, y_train)
 
@@ -180,6 +186,8 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
             input_data2 = input_data2.cuda()
         bsz = input_data1.shape[0]
 
+        print('input_data1.shape:', input_data1.shape)
+        print('input_data2.shape:', input_data2.shape)
         # compute loss
         feature1, feature2 = model(input_data1, input_data2)
 
