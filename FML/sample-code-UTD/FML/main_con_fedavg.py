@@ -22,6 +22,8 @@ from tqdm import tqdm
 
 from fedml_api.standalone.fedavg.fedavg_api import FedAvgAPI_personal
 from fedml_api.standalone.fedavg.model_trainer import MyModelTrainer
+from fedml_api.data_preprocessing.data_loader_default import create_data_loaders
+from args import parse_option
 
 try:
     import apex
@@ -29,107 +31,6 @@ try:
 except ImportError:
     pass
 
-
-def parse_option():
-    parser = argparse.ArgumentParser('argument for training')
-
-    parser.add_argument('--print_freq', type=int, default=5,
-                        help='print frequency')
-    parser.add_argument('--save_freq', type=int, default=50,
-                        help='save frequency')
-    parser.add_argument('--batch_size', type=int, default=32,
-                        help='batch_size')
-    parser.add_argument('--num_workers', type=int, default=16,
-                        help='num of workers to use')
-    parser.add_argument('--epochs', type=int, default=300,
-                        help='number of training epochs')
-
-    # optimization
-    parser.add_argument('--learning_rate', type=float, default=1e-2,
-                        help='learning rate')
-    parser.add_argument('--lr_decay_epochs', type=str, default='100,200,300',
-                        help='where to decay lr, can be a list')
-    parser.add_argument('--lr_decay_rate', type=float, default=0.9,
-                        help='decay rate for learning rate')
-    parser.add_argument('--weight_decay', type=float, default=1e-4,
-                        help='weight decay')
-    parser.add_argument('--momentum', type=float, default=0.9,
-                        help='momentum')
-
-    # model dataset
-    parser.add_argument('--model', type=str, default='MyUTDmodel')
-    parser.add_argument('--dataset', type=str, default='UTD-MHAD',
-                        choices=['USC-HAR', 'UTD-MHAD', 'ours'], help='dataset')
-    parser.add_argument('--num_class', type=int, default=27,
-                        help='num_class')
-    parser.add_argument('--num_train_basic', type=int, default=1,
-                        help='num_train_basic')
-    parser.add_argument('--num_train_unlabel_basic', type=int, default=1,
-                        help='num_train_unlabel_basic')
-    parser.add_argument('--label_rate', type=int, default=5,
-                        help='label_rate')
-
-    # method
-    parser.add_argument('--method', type=str, default='FML',
-                        choices=['FML'], help='choose method')
-    parser.add_argument('--num_positive', type=int, default=9,
-                        help='num_positive')
-
-    # temperature
-    parser.add_argument('--temp', type=float, default=0.07,
-                        help='temperature for loss function')
-
-    # other setting
-    parser.add_argument('--cosine', action='store_true',
-                        help='using cosine annealing')
-    parser.add_argument('--syncBN', action='store_true',
-                        help='using synchronized batch normalization')
-    parser.add_argument('--warm', action='store_true',
-                        help='warm-up for large batch training')
-    parser.add_argument('--trial', type=int, default='3',
-                        help='id for recording multiple runs')
-
-    opt = parser.parse_args()
-
-    # set the path according to the environment
-    opt.model_path = './save/FML/{}_models'.format(opt.dataset)
-    opt.tb_path = './save/FML/{}_tensorboard'.format(opt.dataset)
-
-    iterations = opt.lr_decay_epochs.split(',')
-    opt.lr_decay_epochs = list([])
-    for it in iterations:
-        opt.lr_decay_epochs.append(int(it))
-
-    opt.model_name = '{}_{}_{}_label_{}_lr_{}_decay_{}_bsz_{}_temp_{}_trial_{}_epoch_{}'.\
-        format(opt.method, opt.dataset, opt.model, opt.label_rate, opt.learning_rate,
-               opt.lr_decay_rate, opt.batch_size, opt.temp, opt.trial, opt.epochs)
-
-    if opt.cosine:
-        opt.model_name = '{}_cosine'.format(opt.model_name)
-
-    # warm-up for large-batch training,
-    if opt.batch_size > 256:
-        opt.warm = True
-    if opt.warm:
-        opt.model_name = '{}_warm'.format(opt.model_name)
-        opt.warmup_from = 0.01
-        opt.warm_epochs = 10
-        if opt.cosine:
-            eta_min = opt.learning_rate * (opt.lr_decay_rate ** 3)
-            opt.warmup_to = eta_min + (opt.learning_rate - eta_min) * (
-                    1 + math.cos(math.pi * opt.warm_epochs / opt.epochs)) / 2
-        else:
-            opt.warmup_to = opt.learning_rate
-
-    opt.tb_folder = os.path.join(opt.tb_path, opt.model_name)
-    if not os.path.isdir(opt.tb_folder):
-        os.makedirs(opt.tb_folder)
-
-    opt.save_folder = os.path.join(opt.model_path, opt.model_name)
-    if not os.path.isdir(opt.save_folder):
-        os.makedirs(opt.save_folder)
-
-    return opt
 
 
 def set_loader(opt):
@@ -230,44 +131,76 @@ def main():
     # step1: parameter definition and data loading
     opt = parse_option()
     
+    num_of_train_unlabel = (opt.num_train_unlabel_basic * (20 - opt.label_rate/5) * np.ones(opt.num_class)).astype(int)
+    x_train_1, x_train_2, y_train = data.load_data(opt.num_class, num_of_train_unlabel, 3, opt.label_rate)
+    # TODO: temp: make the total number of samples can be evenly divided by the batch size
+    x_train_1 = x_train_1[:512]
+    x_train_2 = x_train_2[:512]
+    y_train = y_train[:512]
     # step2: trainer
+    model_trainer = MyModelTrainer()
+    # step3: load data for each client
+    train_data_local_dict = dict()
+    CLIENT_NUM = 8
+    assert x_train_1.shape[0] == x_train_2.shape[0] and x_train_1.shape[0] == y_train.shape[0]
+    data_per_client = x_train_1.shape[0] // CLIENT_NUM
+    for i in range(CLIENT_NUM):
+        start_index = (i*data_per_client)
+        end_index = ((i+1)*data_per_client)
+        train_dataset = data.Multimodal_dataset(x_train_1[start_index:end_index], x_train_2[start_index:end_index], y_train[start_index:end_index])
+        train_loader = torch.utils.data.DataLoader(
+            train_dataset, batch_size=opt.batch_size,
+            num_workers=opt.num_workers, pin_memory=True, shuffle=True)
+        train_data_local_dict[i] = train_loader
+    opt.client_num_in_total = CLIENT_NUM
+    # step4: model group
+    global_model, criterion = set_model(opt)
+    w_global = model_trainer.get_model_params(global_model)
+
+    local_models = []
+    for _ in range(CLIENT_NUM):
+        m,_ = set_model(opt)
+        model_trainer.set_model_params(m,w_global)
+        local_models.append(m)
+    # step5: use fedavgAPI for training
+    fedavgAPI = FedAvgAPI_personal(train_data_local_dict, opt.device, opt, model_trainer, global_model, local_models)
+    fedavgAPI.train()
     
-    
-    # build data loader
-    train_loader = set_loader(opt)
-    # build model and criterion
-    model, criterion = set_model(opt)
-    # build optimizer
-    optimizer = set_optimizer(opt, model)
+    # # build data loader
+    # train_loader = set_loader(opt)
+    # # build model and criterion
+    # model, criterion = set_model(opt)
+    # # build optimizer
+    # optimizer = set_optimizer(opt, model)
 
-    # tensorboard
-    logger = tb_logger.Logger(logdir=opt.tb_folder, flush_secs=2)
+    # # tensorboard
+    # logger = tb_logger.Logger(logdir=opt.tb_folder, flush_secs=2)
 
-    # training routine
-    for epoch in tqdm(range(1, opt.epochs + 1)):
-        adjust_learning_rate(opt, optimizer, epoch) # adjust lr for each epoch
+    # # training routine
+    # for epoch in tqdm(range(1, opt.epochs + 1)):
+    #     adjust_learning_rate(opt, optimizer, epoch) # adjust lr for each epoch
 
-        # train for one epoch
-        time1 = time.time()
-        loss = train(train_loader, model, criterion, optimizer, epoch, opt)
-        time2 = time.time()
-        print('epoch {}, total time {:.2f}'.format(epoch, time2 - time1))
+    #     # train for one epoch
+    #     time1 = time.time()
+    #     loss = train(train_loader, model, criterion, optimizer, epoch, opt)
+    #     time2 = time.time()
+    #     print('epoch {}, total time {:.2f}'.format(epoch, time2 - time1))
 
-        # tensorboard logger
-        logger.log_value('loss', loss, epoch)
-        logger.log_value('learning_rate', optimizer.param_groups[0]['lr'], epoch)
+    #     # tensorboard logger
+    #     logger.log_value('loss', loss, epoch)
+    #     logger.log_value('learning_rate', optimizer.param_groups[0]['lr'], epoch)
 
-        if epoch % opt.save_freq == 0:
-            save_file = os.path.join(
-                opt.save_folder, 'ckpt_epoch_{epoch}.pth'.format(epoch=epoch))
-            save_model(model, optimizer, opt, epoch, save_file)
+    #     if epoch % opt.save_freq == 0:
+    #         save_file = os.path.join(
+    #             opt.save_folder, 'ckpt_epoch_{epoch}.pth'.format(epoch=epoch))
+    #         save_model(model, optimizer, opt, epoch, save_file)
 
-    # save the last model
-    save_file = os.path.join(
-        opt.save_folder, 'last.pth')
-    save_model(model, optimizer, opt, opt.epochs, save_file)
-    print("num_positive:", opt.num_positive)
-    print("label_rate:", opt.label_rate)
+    # # save the last model
+    # save_file = os.path.join(
+    #     opt.save_folder, 'last.pth')
+    # save_model(model, optimizer, opt, opt.epochs, save_file)
+    # print("num_positive:", opt.num_positive)
+    # print("label_rate:", opt.label_rate)
     
 
 if __name__ == '__main__':
