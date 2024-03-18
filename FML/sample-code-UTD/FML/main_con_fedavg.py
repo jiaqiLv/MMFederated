@@ -23,7 +23,10 @@ from tqdm import tqdm
 from fedml_api.standalone.fedavg.fedavg_api import FedAvgAPI_personal
 from fedml_api.standalone.fedavg.model_trainer import MyModelTrainer
 from fedml_api.data_preprocessing.data_loader_default import create_data_loaders
+from fedml_api.utils.add_args import add_args
 from args import parse_option
+
+from sklearn.model_selection import train_test_split
 
 try:
     import apex
@@ -130,29 +133,54 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
 def main():
     # step1: parameter definition and data loading
     opt = parse_option()
+    parser = add_args(argparse.ArgumentParser(description='FedAvg-standalone'))
+    args = parser.parse_args()
     
     num_of_train_unlabel = (opt.num_train_unlabel_basic * (20 - opt.label_rate/5) * np.ones(opt.num_class)).astype(int)
-    x_train_1, x_train_2, y_train = data.load_data(opt.num_class, num_of_train_unlabel, 3, opt.label_rate)
+    x_1, x_2, y = data.load_data(opt.num_class, num_of_train_unlabel, 3, opt.label_rate)
     # TODO: temp: make the total number of samples can be evenly divided by the batch size
-    x_train_1 = x_train_1[:512]
-    x_train_2 = x_train_2[:512]
-    y_train = y_train[:512]
+    x_1 = x_1[:512]
+    x_2 = x_2[:512]
+    y = y[:512]
+    
+    # TODO: temp: split the training set and the test set in half
+    x_train_1 = x_1[:256]
+    x_train_2 = x_2[:256]
+    y_train = y[:256]
+    x_test_1 = x_1[256:]
+    x_test_2 = x_2[256:]
+    y_test = y[256:]
     # step2: trainer
     model_trainer = MyModelTrainer()
     # step3: load data for each client
     train_data_local_dict = dict()
-    CLIENT_NUM = 8
+    train_data_local_num_dict = dict()
+    test_data_local_dict = dict()
+    
+    test_dataset = data.Multimodal_dataset(x_test_1,x_test_2,y_test)
+    test_data_global = torch.utils.data.DataLoader(
+            test_dataset, batch_size=1,
+            num_workers=opt.num_workers, pin_memory=True, shuffle=True)
+    
+    CLIENT_NUM = 2
     assert x_train_1.shape[0] == x_train_2.shape[0] and x_train_1.shape[0] == y_train.shape[0]
     data_per_client = x_train_1.shape[0] // CLIENT_NUM
     for i in range(CLIENT_NUM):
         start_index = (i*data_per_client)
         end_index = ((i+1)*data_per_client)
-        train_dataset = data.Multimodal_dataset(x_train_1[start_index:end_index], x_train_2[start_index:end_index], y_train[start_index:end_index])
+        train_dataset_local = data.Multimodal_dataset(x_train_1[start_index:end_index-opt.batch_size], x_train_2[start_index:end_index-opt.batch_size], y_train[start_index:end_index-opt.batch_size])
         train_loader = torch.utils.data.DataLoader(
-            train_dataset, batch_size=opt.batch_size,
+            train_dataset_local, batch_size=opt.batch_size,
+            num_workers=opt.num_workers, pin_memory=True, shuffle=True)
+        test_dataset_local = data.Multimodal_dataset(x_train_1[end_index-opt.batch_size+1:], x_train_2[end_index-opt.batch_size+1:], y_train[end_index-opt.batch_size+1:])
+        test_loader = torch.utils.data.DataLoader(
+            test_dataset_local, batch_size=1,
             num_workers=opt.num_workers, pin_memory=True, shuffle=True)
         train_data_local_dict[i] = train_loader
-    opt.client_num_in_total = CLIENT_NUM
+        test_data_local_dict[i] = test_loader
+        train_data_local_num_dict[i] = data_per_client-opt.batch_size
+    dataset = [train_data_local_dict, test_data_global, test_data_local_dict, train_data_local_num_dict]
+    args.client_num_in_total = CLIENT_NUM
     # step4: model group
     global_model, criterion = set_model(opt)
     w_global = model_trainer.get_model_params(global_model)
@@ -163,7 +191,7 @@ def main():
         model_trainer.set_model_params(m,w_global)
         local_models.append(m)
     # step5: use fedavgAPI for training
-    fedavgAPI = FedAvgAPI_personal(train_data_local_dict, opt.device, opt, model_trainer, global_model, local_models)
+    fedavgAPI = FedAvgAPI_personal(dataset, opt.device, args, model_trainer, global_model, local_models)
     fedavgAPI.train()
     
     # # build data loader

@@ -7,6 +7,9 @@ import copy
 import numpy as np
 from torch.utils.data import DataLoader
 
+from FML_design import ConFusionLoss,FeatureConstructor
+from tqdm import tqdm
+
 
 
 class MetaTrainer(object):
@@ -32,7 +35,7 @@ class MetaTrainer(object):
             epochs = args.epochs
 
         epoch_loss = []
-        for epoch in range(epochs):
+        for epoch in tqdm(range(epochs)):
             batch_loss = []
             iter_num = 0
             for x, y in train_data:
@@ -193,7 +196,8 @@ class MyModelTrainer(object):
         model.to(device)
         model.train()
 
-        criterion = nn.CrossEntropyLoss().to(device)
+        # criterion = nn.CrossEntropyLoss().to(device)
+        criterion = ConFusionLoss()
 
         optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
             
@@ -201,14 +205,16 @@ class MyModelTrainer(object):
             epochs = args.epochs
 
         epoch_loss = []
-        for epoch in range(epochs):
+        for epoch in tqdm(range(epochs)):
             batch_loss = []
-            for x, y in train_data:
-                x = x.to(device)
+            for x1, x2, y in train_data:
+                x1 = x1.to(device)
+                x2 = x2.to(device)
                 y = y.to(device)
                 # y = y.reshape(y.shape[0])
-                logits = model(x)
-                loss = criterion(logits, y.long())
+                feature1, feature2 = model(x1,x2)
+                features = FeatureConstructor(feature1, feature2,num_positive=9)
+                loss = criterion(features, y.long())
 
                 # zero the parameter gradients
                 optimizer.zero_grad()                
@@ -237,10 +243,13 @@ class MyModelTrainer(object):
         total = 0
         correct = 0
         with torch.no_grad():
-            for x, y in test_data:
-                x = x.to(device)
+            for x1, x2, y in test_data:
+                x1 = x1.to(device)
+                x2 = x2.to(device)
                 y = y.to(device)
-                pred = model(x)
+                feature1, feature2 = model(x1,x2)
+                pred = FeatureConstructor(feature1, feature2,num_positive=9)
+                # print('pred.shape:', pred.shape)
                 predictions = torch.argmax(pred, dim=1)
                 total += y.size(0)
                 correct += (predictions == y).sum().item()
@@ -248,8 +257,14 @@ class MyModelTrainer(object):
                 y_test.extend(y.cpu())
             acc = 100 * correct / total
             acc = np.mean(acc)
-                
-        return acc,y_test,y_pre
+        
+        # TODO: 修改y_pre先让代码能跑通
+        y_pre_final = []
+        for item in y_pre:
+            mode, count = torch.mode(item)
+            y_pre_final.append(mode.item())
+        return acc,y_test,y_pre_final
+        # return acc,y_test,y_pre
 
 
     def test_all(self, model_list, model, test_data, device, args):

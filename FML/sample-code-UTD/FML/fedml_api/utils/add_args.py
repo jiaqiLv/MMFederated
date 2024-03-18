@@ -35,7 +35,7 @@ def add_args(parser):
     
     # FL settings
 
-    parser.add_argument('--epochs', type=int, default=5, metavar='EP',
+    parser.add_argument('--epochs', type=int, default=1, metavar='EP',
                         help='how many epochs will be trained locally')
 
     parser.add_argument('--client_num_in_total', type=int, default=10, metavar='NN',
@@ -46,7 +46,7 @@ def add_args(parser):
     # parser.add_argument('--client_num_per_round', type=int, default=10, metavar='NN',
     #                     help='number of workers')
 
-    parser.add_argument('--comm_round', type=int, default=50,
+    parser.add_argument('--comm_round', type=int, default=5,
                         help='how many round of communications we shoud use')
 
     parser.add_argument('--frequency_of_the_test', type=int, default=1,

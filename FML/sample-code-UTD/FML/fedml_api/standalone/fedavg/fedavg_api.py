@@ -270,12 +270,23 @@ class FedAvgAPI_personal(object):
             test_acc, y_test, y_pre = self.client_list[client_idx].local_test()
             from sklearn.metrics import classification_report, confusion_matrix,precision_score, recall_score, accuracy_score, f1_score
             from sklearn.metrics import accuracy_score, roc_auc_score, make_scorer
+            
+            print('y_test:', len(y_test))
+            print('y_pre:', len(y_pre))
+            print('y_test[0]:', y_test[0])
+            print('y_pre[0]:', y_pre[0])
+            
+            
             precisionScore = round(precision_score(y_test, y_pre, average='weighted'), 4)
             recallScore = round(recall_score(y_test, y_pre, average='weighted'),4)
             f1Score = round(f1_score(y_test, y_pre, average='weighted'),4)
             accuracy = round(accuracy_score(y_test, y_pre),4)
-            score = roc_auc_score(y_pre, y_test)
-            score = round(score, 4)
+            
+            # TODO: 暂时不测试ROC
+            score = 0.0
+            # score = roc_auc_score(y_pre, y_test)
+            # score = round(score, 4)
+            
             # test on test dataset
             # test_acc = test_local_metrics['test_correct'] / test_local_metrics['test_total']
             # test_loss = test_local_metrics['test_loss'] / test_local_metrics['test_total']
@@ -285,6 +296,7 @@ class FedAvgAPI_personal(object):
 
             local_test_acc_list.append(test_acc)
             info_client = {'client_id':client_idx, 'local_test_acc': test_acc, '预测精确率为':precisionScore, '预测准确率为': accuracy, '预测f1-score为': f1Score, '预测AUC为' : score, '预测召回率为': recallScore}
+            print('info_client:', info_client)
             logging.info(info_client)
             # local_test_loss_list.append(test_loss)
 
