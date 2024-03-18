@@ -1,9 +1,11 @@
 import logging
 
+from typing import Optional
 import torch
 from torch import nn
 import copy
 import numpy as np
+from torch.utils.data import DataLoader
 
 
 
@@ -174,8 +176,20 @@ class MyModelTrainer(object):
     def set_model_params(self, model, model_parameters):
         model.load_state_dict(copy.deepcopy(model_parameters))
 
-    def train(self, model, train_data, device, args, epochs=None, client_idx=None):
+    def train(self, model:nn.Module, train_data:DataLoader, device:Optional[str], args, epochs=None, client_idx=None) -> float:
+        """_summary_
 
+        Args:
+            model (nn.Module): _description_
+            train_data (DataLoader): train data loader
+            device (Optional[str]): _description_
+            args (_type_): _description_
+            epochs (_type_, optional): _description_. Defaults to None.
+            client_idx (_type_, optional): _description_. Defaults to None.
+
+        Returns:
+            float: _description_
+        """
         model.to(device)
         model.train()
 

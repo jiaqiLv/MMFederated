@@ -18,6 +18,10 @@ from FML_model_guide import MyUTDModelFeature
 from FML_design import FeatureConstructor, ConFusionLoss
 import data_pre as data
 
+from tqdm import tqdm
+
+from fedml_api.standalone.fedavg.fedavg_api import FedAvgAPI_personal
+from fedml_api.standalone.fedavg.model_trainer import MyModelTrainer
 
 try:
     import apex
@@ -82,7 +86,8 @@ def parse_option():
                         help='using synchronized batch normalization')
     parser.add_argument('--warm', action='store_true',
                         help='warm-up for large batch training')
-    parser.add_argument('--trial',type=bool,default=True)
+    parser.add_argument('--trial', type=int, default='3',
+                        help='id for recording multiple runs')
 
     opt = parser.parse_args()
 
@@ -186,8 +191,8 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
             input_data2 = input_data2.cuda()
         bsz = input_data1.shape[0]
 
-        print('input_data1.shape:', input_data1.shape)
-        print('input_data2.shape:', input_data2.shape)
+        # print('input_data1.shape:', input_data1.shape)
+        # print('input_data2.shape:', input_data2.shape)
         # compute loss
         feature1, feature2 = model(input_data1, input_data2)
 
@@ -222,13 +227,10 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
 
 def main():
     opt = parse_option()
-
     # build data loader
     train_loader = set_loader(opt)
-
     # build model and criterion
     model, criterion = set_model(opt)
-
     # build optimizer
     optimizer = set_optimizer(opt, model)
 
@@ -236,8 +238,8 @@ def main():
     logger = tb_logger.Logger(logdir=opt.tb_folder, flush_secs=2)
 
     # training routine
-    for epoch in range(1, opt.epochs + 1):
-        adjust_learning_rate(opt, optimizer, epoch)
+    for epoch in tqdm(range(1, opt.epochs + 1)):
+        adjust_learning_rate(opt, optimizer, epoch) # adjust lr for each epoch
 
         # train for one epoch
         time1 = time.time()

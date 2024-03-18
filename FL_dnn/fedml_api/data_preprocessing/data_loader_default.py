@@ -79,7 +79,18 @@ def load_flmt_data_alltest(train_data, test_data, batch_size, model_name):
     test_dataloader = create_data_loaders(torch.from_numpy(test_data_idx), torch.from_numpy(test_label_idx), batch_size)
     return train_data_local_dict, test_dataloader, train_data_local_num_dict, dim, 500
     
-def load_flmt_data_pertest(train_data, test_data, batch_size, model_name):
+def load_flmt_data_pertest(train_data:pd.DataFrame, test_data:pd.DataFrame, batch_size:int, model_name:str):
+    """_summary_
+
+    Args:
+        train_data (pd.DataFrame): _description_
+        test_data (pd.DataFrame): _description_
+        batch_size (int): _description_
+        model_name (str): _description_
+
+    Returns:
+        _type_: _description_
+    """
     class_num = 2
     train_x = train_data['userId']
     userIdindex_train = train_x.value_counts().index

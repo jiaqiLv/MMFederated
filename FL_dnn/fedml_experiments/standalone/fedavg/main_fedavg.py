@@ -20,10 +20,10 @@ from fedml_api.standalone.fedavg.model_trainer import MyModelTrainer
 
 
 if __name__ == "__main__":
+    # step1: parameter definition and data loading
     logging.basicConfig()
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
-    model_name = 'CNN'
     parser = add_args(argparse.ArgumentParser(description='FedAvg-standalone'))
     args = parser.parse_args()
     batch_size = 1024
@@ -41,11 +41,19 @@ if __name__ == "__main__":
     torch.cuda.manual_seed_all(0)
     torch.backends.cudnn.deterministic = True
     
+    # step2: trainer
     model_trainer = MyModelTrainer()
 
-    # load data
+    # step3: load data for each client
+    model_name = 'CNN'
+    """
+    dataset format: {[UserId1]:data1,[UserId2]:data2,...}
+    dim: feature num
+    """
     dataset, dim, num_client = load_data(train_data, test_data, batch_size, model_name)
     args.client_num_in_total = num_client
+    
+    # step4: model group
     global_model = create_model('CNN', dim, batch_size)
     w_global = model_trainer.get_model_params(global_model)
     
@@ -57,5 +65,7 @@ if __name__ == "__main__":
     
     logging.info(global_model)
     # print("device",device)
+    
+    # step5: use fedavgAPI for training
     fedavgAPI = FedAvgAPI_personal(dataset, device, args, model_trainer, global_model, local_models)
     fedavgAPI.train()
