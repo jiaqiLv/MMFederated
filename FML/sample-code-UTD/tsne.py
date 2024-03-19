@@ -14,12 +14,14 @@ import tensorboard_logger as tb_logger
 import torch
 import torch.backends.cudnn as cudnn
 
-from util import AverageMeter
-from util import adjust_learning_rate, warmup_learning_rate
-from util import set_optimizer, save_model
-from cosmo_design import FeatureConstructor, ConFusionLoss
-import data_pre as data
-from cosmo_model_guide import MyUTDModelFeature, LinearClassifierAttn
+from FML.util import AverageMeter
+from FML.util import adjust_learning_rate, warmup_learning_rate
+from FML.util import set_optimizer, save_model
+# from cosmo_design import FeatureConstructor, ConFusionLoss
+from FML.FML_design import FeatureConstructor,ConFusionLoss
+import FML.data_pre as data
+# from cosmo_model_guide import MyUTDModelFeature, LinearClassifierAttn
+from CMC.cmc_model import MyUTDModelFeature,LinearClassifierAttn
 
 try:
     import apex
@@ -153,11 +155,14 @@ def set_loader(opt):
 
 def set_model(opt):
     model = MyUTDModelFeature(input_size=1)
-    classifier = LinearClassifierAttn(num_classes=opt.num_class, guide = opt.guide_flag)
+    # classifier = LinearClassifierAttn(num_classes=opt.num_class, guide = opt.guide_flag)
+    classifier = LinearClassifierAttn(num_classes=opt.num_class)
     criterion = ConFusionLoss(temperature=opt.temp)
 
     ## load pretrained feature encoders
-    ckpt_path = opt.ckpt + str(opt.label_rate) + '_lr_0.01_decay_0.9_bsz_32_temp_0.07_trial_0_epoch_200/last.pth'
+    # ckpt_path = opt.ckpt + str(opt.label_rate) + '_lr_0.01_decay_0.9_bsz_32_temp_0.07_trial_0_epoch_200/last.pth'
+    ckpt_path = '/code/MMFederated/FML/sample-code-UTD/FML/model/2024-03-19-09-33-31/3.pth'
+
     ckpt = torch.load(ckpt_path)
     state_dict = ckpt['model']
     
