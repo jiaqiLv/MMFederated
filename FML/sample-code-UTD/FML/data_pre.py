@@ -8,7 +8,7 @@ STD_OF_IMU = [0.6761486428324216, 113.55369543559192]
 MEAN_OF_SKELETON = [-0.08385579666058844, -0.2913725901521685, 2.8711066708996738]
 STD_OF_SKELETON = [0.14206656362043646, 0.4722835954035046, 0.16206781976658088]
 
-random.seed(0)
+# random.seed(42)
 
 
 class Multimodal_dataset():
@@ -68,12 +68,6 @@ class Unimodal_dataset():
 
 		
 def load_class_data_single(sensor_str, activity_class, train_test_flag, label_rate):
-	"""
-	sensor_str:
-	activity_class:
-	train_test_flag: 
-	label_rate:
-	"""
 
 	data_all_subject = []
 
@@ -270,14 +264,14 @@ def load_niid_data(num_of_total_class, num_per_class, train_test_flag, label_rat
 	x2 = []
 	y = []
 	# num_per_class = [1 for i in range(num_of_total_class)]
-	print("num_per_class", num_per_class)
+	print("num_per_class:", num_per_class)
 	num_of_total_class = random.sample(range(1, num_of_total_class), 5)
+	print("num_of_total_class:", num_of_total_class)
 	for class_id in num_of_total_class:
 		data_all_subject_1 = load_class_data_single('inertial', class_id, train_test_flag, label_rate).reshape(-1, 120, 6)
 		data_all_subject_2 = load_class_data_single('skeleton', class_id, train_test_flag, label_rate).reshape(-1, 20, 3, 40)
 		class_all_num_data = data_all_subject_1.shape[0]
 		label_all_subject = np.ones(class_all_num_data) * class_id
-		print("class_all_num_data",class_all_num_data)
 		# random sample data
 		if class_all_num_data < num_per_class[class_id]:
 			num_per_class[class_id] = class_all_num_data
@@ -287,15 +281,19 @@ def load_niid_data(num_of_total_class, num_per_class, train_test_flag, label_rat
 		temp_data_1 = data_all_subject_1[sample_index]
 		temp_data_2 = data_all_subject_2[sample_index]
 		temp_label= label_all_subject[sample_index]
+
+		x1.extend(temp_data_1)
+		x2.extend(temp_data_2)
+		y.extend(temp_label)
 	
-	num_of_other_class = random.sample(list(range(27)) - num_of_total_class, 2)
+	# num_of_other_class = random.sample(list(range(27)) - num_of_total_class, 2)
+	num_of_other_class = random.sample(list(set(range(27))-set(num_of_total_class)),2)
 	num_per_class = [2 for i in range(len(num_per_class))]
 	for class_id in num_of_other_class:
 		data_all_subject_1 = load_class_data_single('inertial', class_id, train_test_flag, label_rate).reshape(-1, 120, 6)
 		data_all_subject_2 = load_class_data_single('skeleton', class_id, train_test_flag, label_rate).reshape(-1, 20, 3, 40)
 		class_all_num_data = data_all_subject_1.shape[0]
 		label_all_subject = np.ones(class_all_num_data) * class_id
-		print("class_all_num_data",class_all_num_data)
 		# random sample data
 		if class_all_num_data < num_per_class[class_id]:
 			num_per_class[class_id] = class_all_num_data
@@ -319,9 +317,9 @@ def load_niid_data(num_of_total_class, num_per_class, train_test_flag, label_rat
 	x1 = sensor_data_normalize('inertial', x1)
 	x2 = sensor_data_normalize('skeleton', x2)
 
-	print(x1.shape)
-	print(x2.shape)
-	print(y.shape)
+	print('x1.shape:', x1.shape)
+	print('x2.shape:', x2.shape)
+	print('y.shape:', y.shape)
 
 	return x1, x2, y
 

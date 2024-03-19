@@ -242,6 +242,7 @@ class MyModelTrainer(object):
         y_test = []
         total = 0
         correct = 0
+
         with torch.no_grad():
             for x1, x2, y in test_data:
                 x1 = x1.to(device)
@@ -249,22 +250,19 @@ class MyModelTrainer(object):
                 y = y.to(device)
                 feature1, feature2 = model(x1,x2)
                 pred = FeatureConstructor(feature1, feature2,num_positive=9)
-                # print('pred.shape:', pred.shape)
+
+                # torch.Size([1, 9, 128]) -> torch.Size([1, 128]) -> torch.Size([1])
                 predictions = torch.argmax(pred, dim=1)
+                mode, count = torch.mode(predictions)
+                predictions = torch.tensor([mode.item()],device=device)
+
                 total += y.size(0)
                 correct += (predictions == y).sum().item()
                 y_pre.extend(predictions.cpu()) 
                 y_test.extend(y.cpu())
             acc = 100 * correct / total
             acc = np.mean(acc)
-        
-        # TODO: 修改y_pre先让代码能跑通
-        y_pre_final = []
-        for item in y_pre:
-            mode, count = torch.mode(item)
-            y_pre_final.append(mode.item())
-        return acc,y_test,y_pre_final
-        # return acc,y_test,y_pre
+        return acc,y_test,y_pre
 
 
     def test_all(self, model_list, model, test_data, device, args):

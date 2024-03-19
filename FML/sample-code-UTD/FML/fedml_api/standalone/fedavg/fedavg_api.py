@@ -1,12 +1,16 @@
 import copy
 import logging
+import os
 import random
 
 import numpy as np
 import torch
+from datetime import datetime
 
 from fedml_api.standalone.fedavg.client import Client
 from fedml_api.standalone.fedavg.agg import agg_FedAvg
+
+from util import save_model
 
 
 class FedAvgAPI_meta(object):
@@ -206,6 +210,7 @@ class FedAvgAPI_personal(object):
         for idx, client in enumerate(self.client_list):
             self.model_trainer.set_model_params(client.model, w_global)
         
+        formatted_time = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         # step2: training
         for round_idx in range(self.args.comm_round):
 
@@ -233,6 +238,11 @@ class FedAvgAPI_personal(object):
             elif round_idx % self.args.frequency_of_the_test == 0:
                 self._local_test_on_all_clients(round_idx)
                 self._global_test(round_idx)
+            
+            # step2.4: save model
+            if not os.path.exists(f'model/{formatted_time}'):
+                os.mkdir(f'model/{formatted_time}')
+            save_model(model=self.model_global,opt=self.args,epoch=round_idx,save_file=f'model/{formatted_time}/{round_idx}.pth')
         
         logging.info('avg_client_test_acc = {}'.format(self.avg_client_test_acc))
         logging.info('avg_client_test_loss = {}'.format(self.avg_client_test_loss))
