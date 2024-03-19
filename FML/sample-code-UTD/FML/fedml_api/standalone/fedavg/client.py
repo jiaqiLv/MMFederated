@@ -2,6 +2,11 @@ import logging
 
 
 class Client:
+    """
+    get_sample_number: return the number of data for current client
+    train: (local)
+    local_test: (local)
+    """
 
     def __init__(self, client_idx, local_training_data, local_test_data, local_train_sample_number, args, device,
                  model_trainer, model):

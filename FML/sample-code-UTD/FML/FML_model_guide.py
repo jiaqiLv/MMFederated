@@ -113,7 +113,6 @@ class MyUTDModelFeature(nn.Module):
     """Featue encoders for human-activity-recognition."""
     def __init__(self, input_size):
         super().__init__()
-
         self.encoder = Encoder(input_size)
 
         self.head_1 = nn.Sequential(
@@ -135,12 +134,11 @@ class MyUTDModelFeature(nn.Module):
             )
 
     def forward(self, x1, x2):
-
+        """imu_output and skeleton_output shape: (batch_size,128)"""
         imu_output, skeleton_output = self.encoder(x1, x2)
 
         imu_output = F.normalize(self.head_1(imu_output.view(imu_output.size(0), -1)), dim=1)
         skeleton_output = F.normalize(self.head_2(skeleton_output.view(skeleton_output.size(0), -1)), dim=1)
-
         return imu_output, skeleton_output
 
 

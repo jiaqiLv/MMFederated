@@ -200,29 +200,32 @@ class FedAvgAPI_personal(object):
         logging.info("############setup_clients (END)#############")
 
     def train(self):
-        w_global = self.model_trainer.get_model_params(self.model_global)
+        w_global = self.model_trainer.get_model_params(self.model_global) # global model weight
+        
+        # step1: init client model weight (using global weight)
         for idx, client in enumerate(self.client_list):
             self.model_trainer.set_model_params(client.model, w_global)
         
+        # step2: training
         for round_idx in range(self.args.comm_round):
 
             logging.info("################Communication round : {}".format(round_idx))
 
-            w_locals = []
+            w_locals = [] # record the weight of each client
 
+            # step2.1: train individually for each client
             for idx, client in enumerate(self.client_list):
                 w, l = client.train()
                 w_locals.append((client.get_sample_number(), copy.deepcopy(w)))
 
-            # update global weights and local weights
+            # step2.2: update global weights and local weights
             w_global = self._aggregate(w_locals)
             
             self.model_trainer.set_model_params(self.model_global, w_global)
             for idx, client in enumerate(self.client_list):
                 self.model_trainer.set_model_params(client.model, w_global)
                 
-            # test results
-            # at last round
+            # step2.3: test results at last round
             if round_idx == self.args.comm_round - 1:
                 self._local_test_on_all_clients(round_idx)
                 self._global_test(round_idx)
@@ -257,7 +260,7 @@ class FedAvgAPI_personal(object):
         # self.global_test_loss.append(test_loss)
 
     def _local_test_on_all_clients(self, round_idx):
-
+        # TODO: 修改local test的机制
         logging.info("################local_test_on_all_clients : {}".format(round_idx))
 
         local_test_acc_list = []
@@ -269,13 +272,7 @@ class FedAvgAPI_personal(object):
             # test_local_metrics = client.local_test(True)
             test_acc, y_test, y_pre = self.client_list[client_idx].local_test()
             from sklearn.metrics import classification_report, confusion_matrix,precision_score, recall_score, accuracy_score, f1_score
-            from sklearn.metrics import accuracy_score, roc_auc_score, make_scorer
-            
-            print('y_test:', len(y_test))
-            print('y_pre:', len(y_pre))
-            print('y_test[0]:', y_test[0])
-            print('y_pre[0]:', y_pre[0])
-            
+            from sklearn.metrics import accuracy_score, roc_auc_score, make_scorer         
             
             precisionScore = round(precision_score(y_test, y_pre, average='weighted'), 4)
             recallScore = round(recall_score(y_test, y_pre, average='weighted'),4)

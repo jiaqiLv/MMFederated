@@ -6,9 +6,6 @@ import torch.nn.functional as F
 import numpy as np
 
 def FeatureConstructor(f1, f2, num_positive):
-
-    # print('f1.shape:', f1.shape) # (2,128)
-    # print('f2.shape:', f2.shape) # (2,128)
     fusion_weight = np.arange(1, num_positive + 1) / 10#(0.1, 0,2, ..., 0.9)
 
     fused_feature = []

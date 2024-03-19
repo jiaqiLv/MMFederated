@@ -259,7 +259,6 @@ def load_data(num_of_total_class, num_per_class, train_test_flag, label_rate):
 	print('x1.shape:', x1.shape)
 	print('x2.shape:', x2.shape)
 	print('y.shape:', y.shape)
-	print(y)
 
 	return x1, x2, y
 

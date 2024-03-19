@@ -150,6 +150,7 @@ def main():
     x_test_1 = x_1[256:]
     x_test_2 = x_2[256:]
     y_test = y[256:]
+    
     # step2: trainer
     model_trainer = MyModelTrainer()
     # step3: load data for each client
