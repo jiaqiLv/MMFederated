@@ -139,11 +139,12 @@ def set_loader(opt):
 def set_model(opt):
 
     model = MyUTDModelFeature(input_size=1)
-    classifier = LinearClassifierAttn(num_classes=opt.num_class, guide = guide_flag)
+    classifier = LinearClassifierAttn(num_classes=opt.num_class, guide = opt.guide_flag)
     criterion = torch.nn.CrossEntropyLoss()
 
     ## load pretrained feature encoders
-    ckpt_path = opt.ckpt + str(opt.label_rate) + '_lr_0.01_decay_0.9_bsz_32_temp_0.07_trial_0_epoch_300/last.pth'
+    # ckpt_path = opt.ckpt + str(opt.label_rate) + '_lr_0.01_decay_0.9_bsz_32_temp_0.07_trial_0_epoch_300/last.pth'
+    ckpt_path = '/code/MMFederated/FML/sample-code-UTD/FML/model/2024-03-19-08-25-20/0.pth'
     ckpt = torch.load(ckpt_path, map_location='cpu')
     state_dict = ckpt['model']
 
@@ -208,6 +209,7 @@ def train(train_loader, model, classifier, criterion, optimizer, epoch, opt):
         top1.update(acc[0], bsz)
 
         # SGD
+        model.train()
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()

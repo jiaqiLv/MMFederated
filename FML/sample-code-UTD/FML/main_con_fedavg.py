@@ -137,20 +137,14 @@ def main():
     args = parser.parse_args()
     
     num_of_train_unlabel = (opt.num_train_unlabel_basic * (20 - opt.label_rate/5) * np.ones(opt.num_class)).astype(int)
-    x_1, x_2, y = data.load_data(opt.num_class, num_of_train_unlabel, 3, opt.label_rate)
-    # TODO: temp: make the total number of samples can be evenly divided by the batch size
-    x_1 = x_1[:512]
-    x_2 = x_2[:512]
-    y = y[:512]
-    
-    # TODO: temp: split the training set and the test set in half
-    x_train_1 = x_1[:256]
-    x_train_2 = x_2[:256]
-    y_train = y[:256]
-    x_test_1 = x_1[256:]
-    x_test_2 = x_2[256:]
-    y_test = y[256:]
-    
+    """
+    test dataset: 216(27*2*4) in total, except a27_s8_t4 
+    x_test_1 (215, 120, 6)
+    x_test_2 (215, 40, 20, 3)
+    y_test (215,)
+    """
+    x_test_1, x_test_2, y_test = data.load_data(opt.num_class,num_of_train_unlabel,2,opt.label_rate)
+
     # step2: trainer
     model_trainer = MyModelTrainer()
     # step3: load data for each client
@@ -163,23 +157,27 @@ def main():
             test_dataset, batch_size=1,
             num_workers=opt.num_workers, pin_memory=True, shuffle=True)
     
-    CLIENT_NUM = 2
-    assert x_train_1.shape[0] == x_train_2.shape[0] and x_train_1.shape[0] == y_train.shape[0]
-    data_per_client = x_train_1.shape[0] // CLIENT_NUM
+    CLIENT_NUM = 8
+
     for i in range(CLIENT_NUM):
-        start_index = (i*data_per_client)
-        end_index = ((i+1)*data_per_client)
-        train_dataset_local = data.Multimodal_dataset(x_train_1[start_index:end_index-opt.batch_size], x_train_2[start_index:end_index-opt.batch_size], y_train[start_index:end_index-opt.batch_size])
+        print(f'----------{i}--------')
+        x_train_1, x_train_2, y_train = data.load_niid_data(opt.num_class, num_of_train_unlabel, 3, opt.label_rate)
+        assert x_train_1.shape[0] == x_train_2.shape[0] and x_train_1.shape[0] == y_train.shape[0]
+        train_dataset_local = data.Multimodal_dataset(x_train_1[:32],x_train_2[:32],y_train[:32])
         train_loader = torch.utils.data.DataLoader(
             train_dataset_local, batch_size=opt.batch_size,
             num_workers=opt.num_workers, pin_memory=True, shuffle=True)
-        test_dataset_local = data.Multimodal_dataset(x_train_1[end_index-opt.batch_size+1:], x_train_2[end_index-opt.batch_size+1:], y_train[end_index-opt.batch_size+1:])
-        test_loader = torch.utils.data.DataLoader(
-            test_dataset_local, batch_size=1,
-            num_workers=opt.num_workers, pin_memory=True, shuffle=True)
+        test_loader = test_data_global # client and global model use the same test set
+
+        # test_dataset_local = data.Multimodal_dataset(x_train_1[end_index-opt.batch_size+1:], x_train_2[end_index-opt.batch_size+1:], y_train[end_index-opt.batch_size+1:])
+        # test_loader = torch.utils.data.DataLoader(
+        #     test_dataset_local, batch_size=1,
+        #     num_workers=opt.num_workers, pin_memory=True, shuffle=True)
+
         train_data_local_dict[i] = train_loader
         test_data_local_dict[i] = test_loader
-        train_data_local_num_dict[i] = data_per_client-opt.batch_size
+        train_data_local_num_dict[i] = x_train_1.shape[0]
+        
     dataset = [train_data_local_dict, test_data_global, test_data_local_dict, train_data_local_num_dict]
     args.client_num_in_total = CLIENT_NUM
     # step4: model group
