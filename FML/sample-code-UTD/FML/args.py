@@ -5,6 +5,8 @@ import math
 def parse_option():
     parser = argparse.ArgumentParser('argument for training')
 
+    parser.add_argument('--use_fl',type=bool,default=False,
+                        help='whether to use federated learning')
     parser.add_argument('--print_freq', type=int, default=5,
                         help='print frequency')
     parser.add_argument('--save_freq', type=int, default=50,

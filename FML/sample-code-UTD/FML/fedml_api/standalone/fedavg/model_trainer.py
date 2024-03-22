@@ -9,6 +9,7 @@ from torch.utils.data import DataLoader
 
 from FML_design import ConFusionLoss,FeatureConstructor
 from tqdm import tqdm
+import math
 
 
 
@@ -208,13 +209,26 @@ class MyModelTrainer(object):
         for epoch in tqdm(range(epochs)):
             batch_loss = []
             for x1, x2, y in train_data:
+                LABEL_DATA_NUM = math.ceil(y.shape[0]*0.2)
                 x1 = x1.to(device)
                 x2 = x2.to(device)
                 y = y.to(device)
-                # y = y.reshape(y.shape[0])
+
+                """divide training data into labeled and unlabeled"""
+                # x1_labeled = x1[:LABEL_DATA_NUM]
+                # x2_labeled = x2[:LABEL_DATA_NUM]
+                # y_labeled = y[:LABEL_DATA_NUM]
+                # x1 = x1[LABEL_DATA_NUM:]
+                # x2 = x2[LABEL_DATA_NUM:]
+                # y = y[LABEL_DATA_NUM:]
+
+                """part1: unlabeled data training"""
                 feature1, feature2 = model(x1,x2)
                 features = FeatureConstructor(feature1, feature2,num_positive=9)
                 loss = criterion(features, y.long())
+
+                """part2: labeled data training"""
+                # feature1, feature2 = model(x1_labeled,x2_labeled)
 
                 # zero the parameter gradients
                 optimizer.zero_grad()                

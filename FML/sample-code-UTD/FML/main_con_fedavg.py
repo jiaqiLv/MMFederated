@@ -26,8 +26,6 @@ from fedml_api.data_preprocessing.data_loader_default import create_data_loaders
 from fedml_api.utils.add_args import add_args
 from args import parse_option
 
-from sklearn.model_selection import train_test_split
-
 try:
     import apex
     from apex import amp, optimizers
@@ -162,11 +160,24 @@ def main():
     for i in range(CLIENT_NUM):
         print(f'----------{i}--------')
         x_train_1, x_train_2, y_train = data.load_niid_data(opt.num_class, num_of_train_unlabel, 3, opt.label_rate)
-        assert x_train_1.shape[0] == x_train_2.shape[0] and x_train_1.shape[0] == y_train.shape[0]
+
+        # TODO: modify the data partition mode
+        # LABEL_DATA_NUM = math.ceil(x_train_1.shape[0]*0.05)
+        # assert x_train_1.shape[0] == x_train_2.shape[0] and x_train_1.shape[0] == y_train.shape[0]
+        # x_train_labeled_1,x_train_labeled_2,y_train_labeled = x_train_1[:LABEL_DATA_NUM],x_train_2[:LABEL_DATA_NUM],y_train[:LABEL_DATA_NUM]
+        # x_train_1, x_train_2, y_train = x_train_1[LABEL_DATA_NUM:],x_train_2[:LABEL_DATA_NUM:],y_train[:LABEL_DATA_NUM:]
+
+        # print(x_train_labeled_1.shape,x_train_labeled_2.shape,y_train_labeled.shape)
+        # print(x_train_1.shape,x_train_1.shape,x_train_1.shape)
+
         train_dataset_local = data.Multimodal_dataset(x_train_1[:32],x_train_2[:32],y_train[:32])
         train_loader = torch.utils.data.DataLoader(
             train_dataset_local, batch_size=opt.batch_size,
             num_workers=opt.num_workers, pin_memory=True, shuffle=True)
+        # train_dataset_labeled_local = data.Multimodal_dataset(x_train_labeled_1,x_train_labeled_2,y_train_labeled)
+        # train_labeled_loader = torch.utils.data.DataLoader(
+        #     train_dataset_labeled_local, batch_size=opt.batch_size,
+        #     num_workers=opt.num_workers, pin_memory=True, shuffle=True)
         test_loader = test_data_global # client and global model use the same test set
 
         # test_dataset_local = data.Multimodal_dataset(x_train_1[end_index-opt.batch_size+1:], x_train_2[end_index-opt.batch_size+1:], y_train[end_index-opt.batch_size+1:])

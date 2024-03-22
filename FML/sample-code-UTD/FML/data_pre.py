@@ -277,7 +277,6 @@ def load_niid_data(num_of_total_class, num_per_class, train_test_flag, label_rat
 			num_per_class[class_id] = class_all_num_data
 			# print(f"class_all_num_data {class_id} ", class_all_num_data)
 		sample_index = random.sample(range(0, class_all_num_data), num_per_class[class_id])
-
 		temp_data_1 = data_all_subject_1[sample_index]
 		temp_data_2 = data_all_subject_2[sample_index]
 		temp_label= label_all_subject[sample_index]

@@ -161,21 +161,21 @@ def set_model(opt):
 
     ## load pretrained feature encoders
     # ckpt_path = opt.ckpt + str(opt.label_rate) + '_lr_0.01_decay_0.9_bsz_32_temp_0.07_trial_0_epoch_200/last.pth'
-    ckpt_path = '/code/MMFederated/FML/sample-code-UTD/FML/model/2024-03-19-09-33-31/3.pth'
+    ckpt_path = '/code/MMFederated/FML/sample-code-UTD/FML/model/2024-03-19-09-33-31/4.pth'
 
     ckpt = torch.load(ckpt_path)
     state_dict = ckpt['model']
     
-    # if torch.cuda.is_available():
-    #     new_state_dict = {}
-    #     for k, v in state_dict.items():
-    #         k = k.replace("module.", "")
-    #         new_state_dict[k] = v
-    #     state_dict = new_state_dict
-    #     model = model.cuda()
-    #     classifier = classifier.cuda()
-    #     criterion = criterion.cuda()
-    #     cudnn.benchmark = True
+    if torch.cuda.is_available():
+        new_state_dict = {}
+        for k, v in state_dict.items():
+            k = k.replace("module.", "")
+            new_state_dict[k] = v
+        state_dict = new_state_dict
+        model = model.cuda()
+        classifier = classifier.cuda()
+        criterion = criterion.cuda()
+        cudnn.benchmark = True
 
     model.load_state_dict(state_dict)
     model = model.to("cuda:0")
@@ -246,7 +246,7 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
     plt.title("t-SNE visualization of multimodal embeddings")
     plt.xlabel("t-SNE axis 1")
     plt.ylabel("t-SNE axis 2")
-    plt.savefig('iid_1_part_feature.png')
+    plt.savefig('global.png')
 
 def main():
     opt = parse_option()

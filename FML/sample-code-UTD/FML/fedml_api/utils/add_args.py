@@ -4,6 +4,9 @@ def add_args(parser):
     return a parser added with args required by fit
     """
     # Training settings
+    parser.add_argument('--use_fl',type=bool,default=False,
+                        help='whether to use federated learning')
+
     parser.add_argument('--gpu', type=int, default=0,
                         help='gpu')
     
@@ -35,7 +38,7 @@ def add_args(parser):
     
     # FL settings
 
-    parser.add_argument('--epochs', type=int, default=1, metavar='EP',
+    parser.add_argument('--epochs', type=int, default=50, metavar='EP',
                         help='how many epochs will be trained locally')
 
     parser.add_argument('--client_num_in_total', type=int, default=10, metavar='NN',
