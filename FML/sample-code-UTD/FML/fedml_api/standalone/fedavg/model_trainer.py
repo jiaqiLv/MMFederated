@@ -218,30 +218,35 @@ class MyModelTrainer(object):
             batch_loss_labeled = []
             batch_loss_unlabeled = []
             for x1, x2, y in train_data:
-                LABEL_DATA_NUM = math.ceil(y.shape[0]*0.2)
                 x1 = x1.to(device)
                 x2 = x2.to(device)
                 y = y.to(device)
 
-                """divide training data into labeled and unlabeled"""
-                x1_labeled = x1[:LABEL_DATA_NUM]
-                x2_labeled = x2[:LABEL_DATA_NUM]
-                y_labeled = y[:LABEL_DATA_NUM]
-                x1 = x1[LABEL_DATA_NUM:]
-                x2 = x2[LABEL_DATA_NUM:]
-                y = y[LABEL_DATA_NUM:]
+                if args.use_labeled:
+                    LABEL_DATA_NUM = math.ceil(y.shape[0]*0.2)
+                    """divide training data into labeled and unlabeled"""
+                    x1_labeled = x1[:LABEL_DATA_NUM]
+                    x2_labeled = x2[:LABEL_DATA_NUM]
+                    y_labeled = y[:LABEL_DATA_NUM]
+                    x1 = x1[LABEL_DATA_NUM:]
+                    x2 = x2[LABEL_DATA_NUM:]
+                    y = y[LABEL_DATA_NUM:]
 
                 """part1: unlabeled data training"""
                 feature1, feature2 = model(x1,x2)
                 features = FeatureConstructor(feature1, feature2,num_positive=9)
                 loss_unlabeled = criterion(features, y.long())
 
-                """part2: labeled data training"""
-                feature1, feature2 = model(x1_labeled,x2_labeled)
-                y_predict = classifier(feature1,feature2)
-                loss_labeled = criterion_labeled(y_predict,y_labeled)
+                if args.use_labeled:
+                    """part2: labeled data training"""
+                    feature1, feature2 = model(x1_labeled,x2_labeled)
+                    y_predict = classifier(feature1,feature2)
+                    loss_labeled = criterion_labeled(y_predict,y_labeled)
 
-                loss = loss_labeled + loss_unlabeled
+                if args.use_labeled:
+                    loss = loss_labeled + loss_unlabeled
+                else:
+                    loss = loss_unlabeled
 
                 # zero the parameter gradients
                 optimizer.zero_grad()                
@@ -249,8 +254,13 @@ class MyModelTrainer(object):
                 optimizer.step()
 
                 batch_loss.append(loss.item())
-                batch_loss_labeled.append(loss_labeled.item())
                 batch_loss_unlabeled.append(loss_unlabeled.item())
+
+                if args.use_labeled:
+                    batch_loss_labeled.append(loss_labeled.item())
+                else:
+                    batch_loss_labeled.append(0)
+                    
 
                 
             epoch_loss.append(sum(batch_loss) / len(batch_loss))

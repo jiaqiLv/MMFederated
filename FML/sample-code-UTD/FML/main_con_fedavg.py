@@ -6,6 +6,7 @@ import argparse
 import time
 import math
 import numpy as np
+from datetime import datetime
 
 import tensorboard_logger as tb_logger
 import torch
@@ -135,7 +136,6 @@ def main():
     args = parser.parse_args()
     
     num_of_train_unlabel = (opt.num_train_unlabel_basic * (20 - opt.label_rate/5) * np.ones(opt.num_class)).astype(int)
-    print('num_of_train_unlabel:', num_of_train_unlabel)
     """
     test dataset: 216(27*2*4) in total, except a27_s8_t4 
     x_test_1 (215, 120, 6)
@@ -156,23 +156,22 @@ def main():
             test_dataset, batch_size=1,
             num_workers=opt.num_workers, pin_memory=True, shuffle=True)
     
-    CLIENT_NUM = 8
-
+    with open('./class_for_per_client.txt','a') as file:
+        formatted_time = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+        file.write(str(formatted_time))
+        file.write('\n')
+          
+    CLIENT_NUM = 6
     for i in range(CLIENT_NUM):
         print(f'----------{i}--------')
-        num_of_train_unlabel = (opt.num_train_unlabel_basic * (20 - opt.label_rate/5) * np.ones(opt.num_class)).astype(int)
-        x_train_1, x_train_2, y_train = data.load_niid_data(opt.num_class, num_of_train_unlabel, 3, opt.label_rate)
+        # num_of_train_unlabel = (opt.num_train_unlabel_basic * (20 - opt.label_rate/5) * np.ones(opt.num_class)).astype(int)
+        # x_train_1, x_train_2, y_train = data.load_niid_data(opt.num_class, num_of_train_unlabel, 3, opt.label_rate)
 
         # TODO: modify the data partition mode
-        # LABEL_DATA_NUM = math.ceil(x_train_1.shape[0]*0.05)
-        # assert x_train_1.shape[0] == x_train_2.shape[0] and x_train_1.shape[0] == y_train.shape[0]
-        # x_train_labeled_1,x_train_labeled_2,y_train_labeled = x_train_1[:LABEL_DATA_NUM],x_train_2[:LABEL_DATA_NUM],y_train[:LABEL_DATA_NUM]
-        # x_train_1, x_train_2, y_train = x_train_1[LABEL_DATA_NUM:],x_train_2[:LABEL_DATA_NUM:],y_train[:LABEL_DATA_NUM:]
+        x_train_1, x_train_2, y_train = data.load_niid_data_for_tsne(opt.num_class, 3, opt.label_rate, i)
+        assert x_train_1.shape[0] == x_train_2.shape[0] and x_train_1.shape[0] == y_train.shape[0]
 
-        # print(x_train_labeled_1.shape,x_train_labeled_2.shape,y_train_labeled.shape)
-        # print(x_train_1.shape,x_train_1.shape,x_train_1.shape)
-
-        train_dataset_local = data.Multimodal_dataset(x_train_1[:90],x_train_2[:90],y_train[:90])
+        train_dataset_local = data.Multimodal_dataset(x_train_1[:100],x_train_2[:100],y_train[:100])
         train_loader = torch.utils.data.DataLoader(
             train_dataset_local, batch_size=opt.batch_size,
             num_workers=opt.num_workers, pin_memory=True, shuffle=True)
@@ -181,11 +180,6 @@ def main():
         #     train_dataset_labeled_local, batch_size=opt.batch_size,
         #     num_workers=opt.num_workers, pin_memory=True, shuffle=True)
         test_loader = test_data_global # client and global model use the same test set
-
-        # test_dataset_local = data.Multimodal_dataset(x_train_1[end_index-opt.batch_size+1:], x_train_2[end_index-opt.batch_size+1:], y_train[end_index-opt.batch_size+1:])
-        # test_loader = torch.utils.data.DataLoader(
-        #     test_dataset_local, batch_size=1,
-        #     num_workers=opt.num_workers, pin_memory=True, shuffle=True)
 
         train_data_local_dict[i] = train_loader
         test_data_local_dict[i] = test_loader
