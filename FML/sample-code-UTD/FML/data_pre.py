@@ -2,6 +2,7 @@ import numpy as np
 import torch
 from sklearn.model_selection import train_test_split
 import random
+from datetime import datetime
 
 MEAN_OF_IMU = [-0.32627436907665514, -0.8661114601303396]
 STD_OF_IMU = [0.6761486428324216, 113.55369543559192]
@@ -64,6 +65,13 @@ class Unimodal_dataset():
 		activity_label = self.labels[idx]
 
 		return sensor_data, activity_label
+
+
+def load_user_data_single(sensor_str:str, user_id:int,label_rate:int):
+	"""
+	sensor_str: sensor type(inertial or skeleton)
+	"""
+	pass
 
 
 		
@@ -321,6 +329,80 @@ def load_niid_data(num_of_total_class, num_per_class, train_test_flag, label_rat
 	print('y.shape:', y.shape)
 
 	return x1, x2, y
+
+
+def load_niid_data_for_tsne(num_of_total_class, train_test_flag, label_rate,client_id):
+
+	MAJOR_CLASS_NUM = 5
+	MINOR_CLASS_NUM = 2
+	NUM_PER_MAJOR_CLASS = 19
+	NUM_PER_MINOR_CLASS = 4
+
+	x1 = []
+	x2 = []
+	y = []
+
+	# step1: extract major class data
+	num_of_major_class = random.sample(range(1, num_of_total_class), MAJOR_CLASS_NUM)
+	print("num_of_major_class:", num_of_major_class)
+	for class_id in num_of_major_class:
+		# step1.1: extract all data for a single class
+		data_all_subject_1 = load_class_data_single('inertial', class_id, train_test_flag, label_rate).reshape(-1, 120, 6)
+		data_all_subject_2 = load_class_data_single('skeleton', class_id, train_test_flag, label_rate).reshape(-1, 20, 3, 40)
+
+		class_all_num_data = data_all_subject_1.shape[0] # total number of data for a single class
+		label_all_subject = np.ones(class_all_num_data) * class_id # label
+
+		# step1.2: random sample data
+		sample_index = random.sample(range(0, class_all_num_data), NUM_PER_MAJOR_CLASS)
+		temp_data_1 = data_all_subject_1[sample_index]
+		temp_data_2 = data_all_subject_2[sample_index]
+		temp_label= label_all_subject[sample_index]
+
+		# step1.3: add data
+		x1.extend(temp_data_1)
+		x2.extend(temp_data_2)
+		y.extend(temp_label)
+	
+		
+	# step2: extract minor class data
+	num_of_minor_class = random.sample(list(set(range(27))-set(num_of_major_class)),MINOR_CLASS_NUM)
+	print("num_of_minor_class:", num_of_minor_class)
+	for class_id in num_of_minor_class:
+		data_all_subject_1 = load_class_data_single('inertial', class_id, train_test_flag, label_rate).reshape(-1, 120, 6)
+		data_all_subject_2 = load_class_data_single('skeleton', class_id, train_test_flag, label_rate).reshape(-1, 20, 3, 40)
+		class_all_num_data = data_all_subject_1.shape[0]
+		label_all_subject = np.ones(class_all_num_data) * class_id
+		# random sample data
+		sample_index = random.sample(range(0, class_all_num_data), NUM_PER_MINOR_CLASS)
+
+		temp_data_1 = data_all_subject_1[sample_index]
+		temp_data_2 = data_all_subject_2[sample_index]
+		temp_label= label_all_subject[sample_index]
+
+		x1.extend(temp_data_1)
+		x2.extend(temp_data_2)
+		y.extend(temp_label)
+
+	x1 = np.array(x1)
+	x2 = np.array(x2)
+	y = np.array(y)
+
+	x2 = x2.swapaxes(1,3).swapaxes(2,3)#(-1, 40, 20, 3)
+
+	x1 = sensor_data_normalize('inertial', x1)
+	x2 = sensor_data_normalize('skeleton', x2)
+
+	with open('./class_for_per_client.txt','a') as file:
+		text = f'{client_id}:{num_of_major_class} {num_of_minor_class}\n'
+		file.write(text)
+
+	print('x1.shape:', x1.shape)
+	print('x2.shape:', x2.shape)
+	print('y.shape:', y.shape)
+
+	return x1, x2, y
+
 
 
 

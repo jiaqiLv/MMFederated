@@ -6,6 +6,9 @@ def add_args(parser):
     # Training settings
     parser.add_argument('--use_fl',type=bool,default=False,
                         help='whether to use federated learning')
+    
+    parser.add_argument('--use_labeled',type=bool,default=False,
+                        help='whether to use labeled data')
 
     parser.add_argument('--gpu', type=int, default=0,
                         help='gpu')
