@@ -220,8 +220,9 @@ class FedAvgAPI_personal(object):
 
             # step2.1: train individually for each client
             for idx, client in enumerate(self.client_list):
-                w, l = client.train()
+                w, l, l_labeled, l_unlabeled = client.train()
                 w_locals.append((client.get_sample_number(), copy.deepcopy(w)))
+                print(f'round_idx:{round_idx} l:{l} l_labeled:{l_labeled} l_unlabeled:{l_unlabeled}')
             
             if self.args.use_fl:
                 # step2.2: update global weights and local weights
@@ -232,13 +233,13 @@ class FedAvgAPI_personal(object):
                     self.model_trainer.set_model_params(client.model, w_global)
                 
             # step2.3: test results at last round
-            if round_idx == self.args.comm_round - 1:
-                self._local_test_on_all_clients(round_idx)
-                self._global_test(round_idx)
+            # if round_idx == self.args.comm_round - 1:
+            #     self._local_test_on_all_clients(round_idx)
+            #     self._global_test(round_idx)
 
-            elif round_idx % self.args.frequency_of_the_test == 0:
-                self._local_test_on_all_clients(round_idx)
-                self._global_test(round_idx)
+            # elif round_idx % self.args.frequency_of_the_test == 0:
+            #     self._local_test_on_all_clients(round_idx)
+            #     self._global_test(round_idx)
 
             if not os.path.exists(f'model/{formatted_time}'):
                     os.mkdir(f'model/{formatted_time}')

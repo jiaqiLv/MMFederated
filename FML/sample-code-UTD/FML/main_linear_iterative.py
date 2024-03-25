@@ -24,7 +24,7 @@ try:
 except ImportError:
     pass
 
-CKPT_FOLDER = '/code/MMFederated/FML/sample-code-UTD/FML/model/2024-03-19-09-33-31'
+CKPT_FOLDER = '/code/MMFederated/FML/sample-code-UTD/FML/model/2024-03-25-03-13-46'
 
 
 def parse_option():

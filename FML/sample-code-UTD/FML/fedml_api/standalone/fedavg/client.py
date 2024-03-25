@@ -26,9 +26,9 @@ class Client:
         return self.local_train_sample_number
 
     def train(self, epochs=None):
-        loss = self.model_trainer.train(self.model, self.local_training_data, self.device, self.args, epochs=epochs, client_idx=self.client_idx)
+        loss, loss_labeled, loss_unlabeled = self.model_trainer.train(self.model, self.local_training_data, self.device, self.args, epochs=epochs, client_idx=self.client_idx)
         weights = self.model_trainer.get_model_params(self.model)
-        return weights, loss
+        return weights, loss , loss_labeled, loss_unlabeled
         
 
     def local_test(self):

@@ -135,6 +135,7 @@ def main():
     args = parser.parse_args()
     
     num_of_train_unlabel = (opt.num_train_unlabel_basic * (20 - opt.label_rate/5) * np.ones(opt.num_class)).astype(int)
+    print('num_of_train_unlabel:', num_of_train_unlabel)
     """
     test dataset: 216(27*2*4) in total, except a27_s8_t4 
     x_test_1 (215, 120, 6)
@@ -159,6 +160,7 @@ def main():
 
     for i in range(CLIENT_NUM):
         print(f'----------{i}--------')
+        num_of_train_unlabel = (opt.num_train_unlabel_basic * (20 - opt.label_rate/5) * np.ones(opt.num_class)).astype(int)
         x_train_1, x_train_2, y_train = data.load_niid_data(opt.num_class, num_of_train_unlabel, 3, opt.label_rate)
 
         # TODO: modify the data partition mode
@@ -170,7 +172,7 @@ def main():
         # print(x_train_labeled_1.shape,x_train_labeled_2.shape,y_train_labeled.shape)
         # print(x_train_1.shape,x_train_1.shape,x_train_1.shape)
 
-        train_dataset_local = data.Multimodal_dataset(x_train_1[:32],x_train_2[:32],y_train[:32])
+        train_dataset_local = data.Multimodal_dataset(x_train_1[:90],x_train_2[:90],y_train[:90])
         train_loader = torch.utils.data.DataLoader(
             train_dataset_local, batch_size=opt.batch_size,
             num_workers=opt.num_workers, pin_memory=True, shuffle=True)

@@ -10,6 +10,7 @@ from torch.utils.data import DataLoader
 from FML_design import ConFusionLoss,FeatureConstructor
 from tqdm import tqdm
 import math
+from custom_classifier import CustomClassifier
 
 
 
@@ -199,15 +200,23 @@ class MyModelTrainer(object):
 
         # criterion = nn.CrossEntropyLoss().to(device)
         criterion = ConFusionLoss()
+        criterion_labeled = nn.CrossEntropyLoss()
 
         optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+
+        # TODO: 自定义简易分类器
+        classifier = CustomClassifier(encoder_hidden_size=128,class_num=27)
             
         if epochs == None:
             epochs = args.epochs
 
         epoch_loss = []
+        epoch_loss_labeled = []
+        epoch_loss_unlabeled = []
         for epoch in tqdm(range(epochs)):
             batch_loss = []
+            batch_loss_labeled = []
+            batch_loss_unlabeled = []
             for x1, x2, y in train_data:
                 LABEL_DATA_NUM = math.ceil(y.shape[0]*0.2)
                 x1 = x1.to(device)
@@ -215,28 +224,38 @@ class MyModelTrainer(object):
                 y = y.to(device)
 
                 """divide training data into labeled and unlabeled"""
-                # x1_labeled = x1[:LABEL_DATA_NUM]
-                # x2_labeled = x2[:LABEL_DATA_NUM]
-                # y_labeled = y[:LABEL_DATA_NUM]
-                # x1 = x1[LABEL_DATA_NUM:]
-                # x2 = x2[LABEL_DATA_NUM:]
-                # y = y[LABEL_DATA_NUM:]
+                x1_labeled = x1[:LABEL_DATA_NUM]
+                x2_labeled = x2[:LABEL_DATA_NUM]
+                y_labeled = y[:LABEL_DATA_NUM]
+                x1 = x1[LABEL_DATA_NUM:]
+                x2 = x2[LABEL_DATA_NUM:]
+                y = y[LABEL_DATA_NUM:]
 
                 """part1: unlabeled data training"""
                 feature1, feature2 = model(x1,x2)
                 features = FeatureConstructor(feature1, feature2,num_positive=9)
-                loss = criterion(features, y.long())
+                loss_unlabeled = criterion(features, y.long())
 
                 """part2: labeled data training"""
-                # feature1, feature2 = model(x1_labeled,x2_labeled)
+                feature1, feature2 = model(x1_labeled,x2_labeled)
+                y_predict = classifier(feature1,feature2)
+                loss_labeled = criterion_labeled(y_predict,y_labeled)
+
+                loss = loss_labeled + loss_unlabeled
 
                 # zero the parameter gradients
                 optimizer.zero_grad()                
                 loss.backward()
                 optimizer.step()
+
                 batch_loss.append(loss.item())
+                batch_loss_labeled.append(loss_labeled.item())
+                batch_loss_unlabeled.append(loss_unlabeled.item())
+
                 
             epoch_loss.append(sum(batch_loss) / len(batch_loss))
+            epoch_loss_labeled.append(sum(batch_loss_labeled) / len(batch_loss_labeled))
+            epoch_loss_unlabeled.append(sum(batch_loss_unlabeled) /  len(batch_loss_unlabeled))
             
             if client_idx != None:
                 logging.info('Client Index = {}\tEpoch: {}\tLoss: {:.6f}'.format(
@@ -245,7 +264,7 @@ class MyModelTrainer(object):
                 logging.info('Epoch: {}\tLoss: {:.6f}'.format(
                 epoch, sum(epoch_loss) / len(epoch_loss)))
                 
-        return sum(epoch_loss) / len(epoch_loss)
+        return sum(epoch_loss) / len(epoch_loss), sum(epoch_loss_labeled) / len(epoch_loss_labeled), sum(epoch_loss_unlabeled) / len(epoch_loss_unlabeled)
 
     def test(self, model, test_data, device, args):
         # model = self.model
