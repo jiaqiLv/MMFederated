@@ -29,6 +29,8 @@ try:
 except ImportError:
     pass
 
+DATA_CLASS = [12,23,4,6,9,10] # 训练时所用到的class
+
 
 def parse_option():
     parser = argparse.ArgumentParser('argument for training')
@@ -43,6 +45,8 @@ def parse_option():
                         help='num of workers to use')
     parser.add_argument('--epochs', type=int, default=200,
                         help='number of training epochs')
+    parser.add_argument('--set_subclass',type=bool,default=False,
+                        help='whether to use subclass tsne')
 
     # optimization
     parser.add_argument('--learning_rate', type=float, default=1e-2,
@@ -161,7 +165,7 @@ def set_model(opt):
 
     ## load pretrained feature encoders
     # ckpt_path = opt.ckpt + str(opt.label_rate) + '_lr_0.01_decay_0.9_bsz_32_temp_0.07_trial_0_epoch_200/last.pth'
-    ckpt_path = '/code/MMFederated/FML/sample-code-UTD/FML/model/2024-03-19-09-33-31/4.pth'
+    ckpt_path = '/workspace/lvjiaqi/MMFederated/FML/sample-code-UTD/FML/model/2024-03-19-09-33-31/4.pth'
 
     ckpt = torch.load(ckpt_path)
     state_dict = ckpt['model']
@@ -204,11 +208,9 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
             input_data2 = input_data2.cuda()
             labels = labels.cuda()
         # compute loss
-        print(input_data1.shape)
+        # print('input_data1.shape:', input_data1.shape)
         feature1, feature2 = model(input_data1, input_data2)
-        # print(feature1.shape)
-        # print(feature1.shape)
-        print(torch.norm(feature1 - feature2))
+        # print('torch.norm(feature1 - feature2):', torch.norm(feature1 - feature2))
         f1_list.append(feature1)
         f2_list.append(feature2)
         l_list.append(labels)
@@ -225,22 +227,23 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
     f2_list = f2_list.cpu().detach().numpy()
     l_list = l_list.cpu().detach().numpy()
 
-    # print(l_list)
     x = np.concatenate((f1_list * 0.5, f2_list * 0.5), axis=1)
     # x = f1_list * 0.5 + f2_list * 0.5
     lx = [l_list[i] for i in range(l_list.shape[0])] 
-    print(x.shape)
-    print(len(lx))
+    print('x.shape:',x.shape)
     tsne = TSNE(n_components=2, random_state=42)
     X_reduced = tsne.fit_transform(x)
     
     # 为每个类别选择一个颜色
     unique_labels = np.unique(lx)
     colors = plt.cm.rainbow(np.linspace(0, 1, len(unique_labels)))
-    print(unique_labels)
     # 创建一个散点图，每个类别的点用不同的颜色表示
     for i, label in enumerate(unique_labels):
-        plt.scatter(X_reduced[lx == label, 0], X_reduced[lx == label, 1], c=[colors[i]], label=label)
+        if opt.set_subclass:
+            if label in DATA_CLASS:
+                plt.scatter(X_reduced[lx == label, 0], X_reduced[lx == label, 1], c=[colors[i]], label=label)
+        else:
+            plt.scatter(X_reduced[lx == label, 0], X_reduced[lx == label, 1], c=[colors[i]], label=label)
     
     plt.legend()
     plt.title("t-SNE visualization of multimodal embeddings")
