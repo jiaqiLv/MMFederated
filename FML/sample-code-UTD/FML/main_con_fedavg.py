@@ -15,6 +15,7 @@ import torch.backends.cudnn as cudnn
 from util import AverageMeter
 from util import adjust_learning_rate, warmup_learning_rate
 from util import set_optimizer, save_model
+from util import ASSIGNMENT_CLASS,CLIENT_NUM
 from FML_model_guide import MyUTDModelFeature
 from FML_design import FeatureConstructor, ConFusionLoss
 import data_pre as data
@@ -132,8 +133,8 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
 def main():
     # step1: parameter definition and data loading
     opt = parse_option()
-    parser = add_args(argparse.ArgumentParser(description='FedAvg-standalone'))
-    args = parser.parse_args()
+    # parser = add_args(argparse.ArgumentParser(description='FedAvg-standalone'))
+    # args = parser.parse_args()
     
     num_of_train_unlabel = (opt.num_train_unlabel_basic * (20 - opt.label_rate/5) * np.ones(opt.num_class)).astype(int)
     """
@@ -161,14 +162,24 @@ def main():
         file.write(str(formatted_time))
         file.write('\n')
           
-    CLIENT_NUM = 6
+    # assignment class
+    # ASSIGNMENT_CLASS = [
+    #     [[18, 24, 15, 22, 20],[0, 23]],
+    #     [[13, 6, 14, 22, 1], [24, 3]],
+    #     [[8, 15, 3, 25, 14], [11, 26]],
+    #     [[20, 21, 10, 3, 17], [5, 15]],
+    #     [[12, 6, 18, 3, 9], [4, 8]],
+    #     [[2, 16, 14, 13, 1], [17, 25]],
+    # ]
+
+    # CLIENT_NUM = 6
     for i in range(CLIENT_NUM):
         print(f'----------{i}--------')
         # num_of_train_unlabel = (opt.num_train_unlabel_basic * (20 - opt.label_rate/5) * np.ones(opt.num_class)).astype(int)
         # x_train_1, x_train_2, y_train = data.load_niid_data(opt.num_class, num_of_train_unlabel, 3, opt.label_rate)
 
         # TODO: modify the data partition mode
-        x_train_1, x_train_2, y_train = data.load_niid_data_for_tsne(opt.num_class, 3, opt.label_rate, i)
+        x_train_1, x_train_2, y_train = data.load_niid_data_for_tsne(opt.num_class, 3, opt.label_rate, i, opt, ASSIGNMENT_CLASS)
         assert x_train_1.shape[0] == x_train_2.shape[0] and x_train_1.shape[0] == y_train.shape[0]
 
         train_dataset_local = data.Multimodal_dataset(x_train_1[:100],x_train_2[:100],y_train[:100])
@@ -186,7 +197,7 @@ def main():
         train_data_local_num_dict[i] = x_train_1.shape[0]
         
     dataset = [train_data_local_dict, test_data_global, test_data_local_dict, train_data_local_num_dict]
-    args.client_num_in_total = CLIENT_NUM
+    opt.client_num_in_total = CLIENT_NUM
     # step4: model group
     global_model, criterion = set_model(opt)
     w_global = model_trainer.get_model_params(global_model)
@@ -197,7 +208,7 @@ def main():
         model_trainer.set_model_params(m,w_global)
         local_models.append(m)
     # step5: use fedavgAPI for training
-    fedavgAPI = FedAvgAPI_personal(dataset, opt.device, args, model_trainer, global_model, local_models)
+    fedavgAPI = FedAvgAPI_personal(dataset, opt.device, opt, model_trainer, global_model, local_models)
     fedavgAPI.train()
     
     # # build data loader

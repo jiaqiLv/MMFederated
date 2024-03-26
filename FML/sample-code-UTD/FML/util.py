@@ -6,6 +6,19 @@ import torch
 import torch.optim as optim
 
 
+# assignment class
+ASSIGNMENT_CLASS = [
+    [[18, 24, 15, 22, 20],[0, 23]],
+    [[13, 6, 14, 22, 1], [24, 3]],
+    [[8, 15, 3, 25, 14], [11, 26]],
+    [[20, 21, 10, 3, 17], [5, 15]],
+    [[12, 6, 18, 3, 9], [4, 8]],
+    [[2, 16, 14, 13, 1], [17, 25]],
+]
+
+CLIENT_NUM = 6
+
+
 class AverageMeter(object):
     """Computes and stores the average and current value"""
     def __init__(self):
