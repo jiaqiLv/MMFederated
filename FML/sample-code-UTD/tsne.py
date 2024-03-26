@@ -1,6 +1,7 @@
 from __future__ import print_function
 
 import os
+from os.path import join,exists
 # os.environ['NCCL_DEBUG'] = 'INFO'
 
 import sys
@@ -17,6 +18,7 @@ import torch.backends.cudnn as cudnn
 from FML.util import AverageMeter
 from FML.util import adjust_learning_rate, warmup_learning_rate
 from FML.util import set_optimizer, save_model
+from FML.util import ASSIGNMENT_CLASS,CLIENT_NUM
 # from cosmo_design import FeatureConstructor, ConFusionLoss
 from FML.FML_design import FeatureConstructor,ConFusionLoss
 import FML.data_pre as data
@@ -95,6 +97,10 @@ def parse_option():
                         help='warm-up for large batch training')
     parser.add_argument('--trial', type=str, default='0',
                         help='id for recording multiple runs')
+    parser.add_argument('--model_type',type=str,default='global',
+                        help='whether to test global or client model')
+    parser.add_argument('--ckpt_folder',type=str,default='/code/MMFederated/FML/sample-code-UTD/FML/model/2024-03-26-02-17-27')
+    parser.add_argument('--ckpt_id',type=int,default=4)
     
     opt = parser.parse_args()
 
@@ -165,7 +171,7 @@ def set_model(opt):
 
     ## load pretrained feature encoders
     # ckpt_path = opt.ckpt + str(opt.label_rate) + '_lr_0.01_decay_0.9_bsz_32_temp_0.07_trial_0_epoch_200/last.pth'
-    ckpt_path = '/workspace/lvjiaqi/MMFederated/FML/sample-code-UTD/FML/model/2024-03-19-09-33-31/4.pth'
+    ckpt_path = opt.ckpt_path
 
     ckpt = torch.load(ckpt_path)
     state_dict = ckpt['model']
@@ -240,7 +246,7 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
     # 创建一个散点图，每个类别的点用不同的颜色表示
     for i, label in enumerate(unique_labels):
         if opt.set_subclass:
-            if label in DATA_CLASS:
+            if label in ASSIGNMENT_CLASS[opt.client_id][0] or label in ASSIGNMENT_CLASS[opt.client_id][1]:
                 plt.scatter(X_reduced[lx == label, 0], X_reduced[lx == label, 1], c=[colors[i]], label=label)
         else:
             plt.scatter(X_reduced[lx == label, 0], X_reduced[lx == label, 1], c=[colors[i]], label=label)
@@ -249,7 +255,8 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
     plt.title("t-SNE visualization of multimodal embeddings")
     plt.xlabel("t-SNE axis 1")
     plt.ylabel("t-SNE axis 2")
-    plt.savefig('global.png')
+    plt.savefig(f'./pictures/{opt.model_type}_{opt.client_id}_{opt.set_subclass}.png')
+    plt.clf()
 
 def main():
     opt = parse_option()
@@ -257,14 +264,25 @@ def main():
     # build data loader
     train_loader = set_loader(opt)
 
-    # build model and criterion
-    model, classifier, criterion = set_model(opt)
-
-    # build optimizer
-    optimizer = set_optimizer(opt, model)
+    # # build model and criterion
+    # model, classifier, criterion = set_model(opt)
+    # # build optimizer
+    # optimizer = set_optimizer(opt, model)
 
     # tensorboard
-    train(train_loader, model, criterion, optimizer, 1, opt)
+
+    for i in range(CLIENT_NUM):
+        opt.client_id = i
+        if opt.model_type == 'global':
+            opt.ckpt_path = join(opt.ckpt_folder,f'{opt.ckpt_id}.pth')
+            model, classifier, criterion = set_model(opt)
+            optimizer = set_optimizer(opt, model)
+            train(train_loader, model, criterion, optimizer, 1, opt)
+        elif opt.model_type == 'client':
+            opt.ckpt_path = join(opt.ckpt_folder,f'client_{i}',f'{opt.ckpt_id}.pth')
+            model, classifier, criterion = set_model(opt)
+            optimizer = set_optimizer(opt, model)
+            train(train_loader, model, criterion, optimizer, 1, opt)
     
     
 
