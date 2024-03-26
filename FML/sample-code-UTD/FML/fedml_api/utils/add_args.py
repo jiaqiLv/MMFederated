@@ -1,3 +1,6 @@
+from email.policy import default
+
+
 def add_args(parser):
     """
     parser : argparse.ArgumentParser
@@ -9,6 +12,9 @@ def add_args(parser):
     
     parser.add_argument('--use_labeled',type=bool,default=False,
                         help='whether to use labeled data')
+    
+    parser.add_argument('--use_assignment_class',type=bool,default=False,
+                        help='whether to use assignment class')
 
     parser.add_argument('--gpu', type=int, default=0,
                         help='gpu')
