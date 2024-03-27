@@ -25,6 +25,7 @@ from FML.FML_design import FeatureConstructor,ConFusionLoss
 import FML.data_pre as data
 # from cosmo_model_guide import MyUTDModelFeature, LinearClassifierAttn
 from CMC.cmc_model import MyUTDModelFeature,LinearClassifierAttn
+from assess_method import hopkins_statistic,Calinski_Harabasz,Silhouette_Coefficient,Davies_Bouldin
 
 try:
     import apex
@@ -215,9 +216,13 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
             input_data2 = input_data2.cuda()
             labels = labels.cuda()
         # compute loss
-        # print('input_data1.shape:', input_data1.shape)
         feature1, feature2 = model(input_data1, input_data2)
-        # print('torch.norm(feature1 - feature2):', torch.norm(feature1 - feature2))
+        if opt.set_subclass:
+            target_indices = [i for i,label in enumerate(labels) if (label in ASSIGNMENT_CLASS[opt.client_id][0] or label in ASSIGNMENT_CLASS[opt.client_id][1]) ]
+            # 根据索引选择对应的数据项
+            feature1 = feature1[target_indices]
+            feature2 = feature2[target_indices]
+            labels = labels[target_indices]
         f1_list.append(feature1)
         f2_list.append(feature2)
         l_list.append(labels)
@@ -233,13 +238,23 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
     f1_list = f1_list.cpu().detach().numpy()
     f2_list = f2_list.cpu().detach().numpy()
     l_list = l_list.cpu().detach().numpy()
-
+    # print('f1_list.shape:', f1_list.shape)
+    # print('f2_list.shape:', f2_list.shape)
+    # print('l_list.shape:', l_list.shape)
     x = np.concatenate((f1_list * 0.5, f2_list * 0.5), axis=1)
     # x = f1_list * 0.5 + f2_list * 0.5
     lx = [l_list[i] for i in range(l_list.shape[0])] 
-    print('x.shape:',x.shape)
+    # print('x.shape:',x.shape)
     tsne = TSNE(n_components=2, random_state=42)
     X_reduced = tsne.fit_transform(x)
+    print('X_reduced.shape:', X_reduced.shape)
+
+
+    # 量化指标
+    hopkins_statistic(X_reduced)
+    Calinski_Harabasz(X_reduced,l_list)
+    Silhouette_Coefficient(X_reduced,l_list)
+    Davies_Bouldin(X_reduced,l_list)
     
     # 为每个类别选择一个颜色
     unique_labels = np.unique(lx)
