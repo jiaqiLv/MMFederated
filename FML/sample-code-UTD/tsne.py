@@ -11,6 +11,7 @@ import math
 import numpy as np
 from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
+import seaborn as sns
 import tensorboard_logger as tb_logger
 import torch
 import torch.backends.cudnn as cudnn
@@ -244,18 +245,31 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
     unique_labels = np.unique(lx)
     colors = plt.cm.rainbow(np.linspace(0, 1, len(unique_labels)))
     # 创建一个散点图，每个类别的点用不同的颜色表示
+    # for i, label in enumerate(unique_labels):
+    #     if opt.set_subclass:
+    #         if label in ASSIGNMENT_CLASS[opt.client_id][0] or label in ASSIGNMENT_CLASS[opt.client_id][1]:
+    #             plt.scatter(X_reduced[lx == label, 0], X_reduced[lx == label, 1], c=[colors[i]], label=label)
+    #     else:
+    #         plt.scatter(X_reduced[lx == label, 0], X_reduced[lx == label, 1], c=[colors[i]], label=label)
+    
     for i, label in enumerate(unique_labels):
         if opt.set_subclass:
             if label in ASSIGNMENT_CLASS[opt.client_id][0] or label in ASSIGNMENT_CLASS[opt.client_id][1]:
-                plt.scatter(X_reduced[lx == label, 0], X_reduced[lx == label, 1], c=[colors[i]], label=label)
+                # sns.scatterplot(x=X_reduced[lx == label, 0],y=X_reduced[lx == label, 1],hue=label)
+                plt.rcParams['font.size'] = 5
+                plt.scatter(X_reduced[lx == label, 0], X_reduced[lx == label, 1], c=[colors[i]], label=label,s=25)
         else:
-            plt.scatter(X_reduced[lx == label, 0], X_reduced[lx == label, 1], c=[colors[i]], label=label)
-    
-    plt.legend()
+            # sns.scatterplot(x=X_reduced[lx == label, 0],y=X_reduced[lx == label, 1],hue=label)
+            plt.rcParams['font.size'] = 5
+            plt.scatter(X_reduced[lx == label, 0], X_reduced[lx == label, 1], c=[colors[i]], label=label,s=25)
+    if opt.set_subclass:
+        plt.legend(bbox_to_anchor=(0.5, 0), loc="lower center",ncol=7)
+    else:
+        plt.legend(bbox_to_anchor=(0.5, 0), loc="lower center",ncol=9)
     plt.title("t-SNE visualization of multimodal embeddings")
     plt.xlabel("t-SNE axis 1")
     plt.ylabel("t-SNE axis 2")
-    plt.savefig(f'./pictures/{opt.model_type}_{opt.client_id}_{opt.set_subclass}.png')
+    plt.savefig(f'./pictures/test/{opt.model_type}_{opt.client_id}_{opt.set_subclass}.png')
     plt.clf()
 
 def main():
