@@ -169,10 +169,15 @@ class FedAvgAPI_meta(object):
 
 
 class FedAvgAPI_personal(object):
-    def __init__(self, dataset, device, args, model_trainer, global_model, local_models):
+    def __init__(self, dataset,train_label_data_local_dict, device, args, model_trainer, global_model, local_models):
+        """
+        dataset: unlabel dataset
+        train_label_data_local_dict: label dataset
+        """
         self.device = device
         self.args = args
         [train_data_local_dict, test_data_global, test_data_local_dict, train_data_local_num_dict] = dataset
+        self.train_label_data_local_dict = train_label_data_local_dict
         self.test_global = test_data_global
         self.val_global = None
         self.class_num = 2
@@ -184,7 +189,7 @@ class FedAvgAPI_personal(object):
         self.train_data_local_dict = train_data_local_dict
         self.test_data_local_dict = test_data_local_dict
         self.model_trainer = model_trainer
-        self._setup_clients(train_data_local_num_dict, test_data_global, test_data_local_dict, train_data_local_dict, model_trainer, local_models)
+        self._setup_clients(train_data_local_num_dict, test_data_global, test_data_local_dict, train_data_local_dict,train_label_data_local_dict, model_trainer, local_models)
         
         self.client_test_acc = [[] for _ in range(len(self.client_list))]
         self.client_test_loss = [[] for _ in range(len(self.client_list))]
@@ -195,10 +200,10 @@ class FedAvgAPI_personal(object):
         self.global_test_acc = []
         
 
-    def _setup_clients(self, train_data_local_num_dict, test_data_global, test_data_local_dict, train_data_local_dict, model_trainer, local_models):
+    def _setup_clients(self, train_data_local_num_dict, test_data_global, test_data_local_dict, train_data_local_dict,train_label_data_local_dict, model_trainer, local_models):
         logging.info("############setup_clients (START)#############")
         for client_idx in range(self.args.client_num_in_total):
-            c = Client(client_idx, train_data_local_dict[client_idx], test_data_local_dict[client_idx],
+            c = Client(client_idx,train_label_data_local_dict[client_idx], train_data_local_dict[client_idx], test_data_local_dict[client_idx],
                        train_data_local_num_dict[client_idx], self.args, self.device, model_trainer, local_models[client_idx])
             self.client_list.append(c)
         logging.info("############setup_clients (END)#############")
@@ -212,7 +217,7 @@ class FedAvgAPI_personal(object):
         
         formatted_time = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         # step2: training
-        for round_idx in range(self.args.comm_round):
+        for round_idx in range(1,self.args.comm_round+1):
 
             logging.info("################Communication round : {}".format(round_idx))
 
@@ -243,14 +248,16 @@ class FedAvgAPI_personal(object):
 
             if not os.path.exists(f'model/{formatted_time}'):
                     os.mkdir(f'model/{formatted_time}')
-            if self.args.use_fl:
-                # step2.4: save model
-                save_model(model=self.model_global,opt=self.args,epoch=round_idx,save_file=f'model/{formatted_time}/{round_idx}.pth')
-            else:
-                for i in range(len(self.client_list)):
-                    if not os.path.exists(f'model/{formatted_time}/client_{i}'):
-                        os.mkdir(f'model/{formatted_time}/client_{i}')
-                    save_model(model=self.client_list[i].model,opt=self.args,epoch=round_idx,save_file=f'model/{formatted_time}/client_{i}/{round_idx}.pth')
+            
+            if round_idx%self.args.save_freq==0:
+                if self.args.use_fl:
+                    # step2.4: save model
+                    save_model(model=self.model_global,opt=self.args,epoch=round_idx,save_file=f'model/{formatted_time}/{round_idx}.pth')
+                else:
+                    for i in range(len(self.client_list)):
+                        if not os.path.exists(f'model/{formatted_time}/client_{i}'):
+                            os.mkdir(f'model/{formatted_time}/client_{i}')
+                        save_model(model=self.client_list[i].model,opt=self.args,epoch=round_idx,save_file=f'model/{formatted_time}/client_{i}/{round_idx}.pth')
         
         logging.info('avg_client_test_acc = {}'.format(self.avg_client_test_acc))
         logging.info('avg_client_test_loss = {}'.format(self.avg_client_test_loss))

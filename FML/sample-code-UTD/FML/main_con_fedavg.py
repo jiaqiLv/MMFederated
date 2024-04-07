@@ -151,6 +151,7 @@ def main():
     train_data_local_dict = dict()
     train_data_local_num_dict = dict()
     test_data_local_dict = dict()
+    train_label_data_local_dict = dict()
     
     test_dataset = data.Multimodal_dataset(x_test_1,x_test_2,y_test)
     test_data_global = torch.utils.data.DataLoader(
@@ -162,17 +163,6 @@ def main():
         file.write(str(formatted_time))
         file.write('\n')
           
-    # assignment class
-    # ASSIGNMENT_CLASS = [
-    #     [[18, 24, 15, 22, 20],[0, 23]],
-    #     [[13, 6, 14, 22, 1], [24, 3]],
-    #     [[8, 15, 3, 25, 14], [11, 26]],
-    #     [[20, 21, 10, 3, 17], [5, 15]],
-    #     [[12, 6, 18, 3, 9], [4, 8]],
-    #     [[2, 16, 14, 13, 1], [17, 25]],
-    # ]
-
-    # CLIENT_NUM = 6
     for i in range(CLIENT_NUM):
         print(f'----------{i}--------')
         # num_of_train_unlabel = (opt.num_train_unlabel_basic * (20 - opt.label_rate/5) * np.ones(opt.num_class)).astype(int)
@@ -180,21 +170,25 @@ def main():
 
         # TODO: modify the data partition mode
         x_train_1, x_train_2, y_train = data.load_niid_data_for_tsne(opt.num_class, 3, opt.label_rate, i, opt, ASSIGNMENT_CLASS)
+        # TODO: 有标签数据的加载
+        x_train_labeled_1, x_train_labeled_2, y_train_labeled = data.load_niid_data_for_tsne(opt.num_class,1,opt.label_rate,i,opt,ASSIGNMENT_CLASS)
         assert x_train_1.shape[0] == x_train_2.shape[0] and x_train_1.shape[0] == y_train.shape[0]
+        assert x_train_labeled_1.shape[0] == x_train_labeled_2.shape[0] and x_train_labeled_1.shape[0] == y_train_labeled.shape[0]
 
-        train_dataset_local = data.Multimodal_dataset(x_train_1[:100],x_train_2[:100],y_train[:100])
+        train_dataset_local = data.Multimodal_dataset(x_train_1,x_train_2,y_train)
         train_loader = torch.utils.data.DataLoader(
             train_dataset_local, batch_size=opt.batch_size,
             num_workers=opt.num_workers, pin_memory=True, shuffle=True)
-        # train_dataset_labeled_local = data.Multimodal_dataset(x_train_labeled_1,x_train_labeled_2,y_train_labeled)
-        # train_labeled_loader = torch.utils.data.DataLoader(
-        #     train_dataset_labeled_local, batch_size=opt.batch_size,
-        #     num_workers=opt.num_workers, pin_memory=True, shuffle=True)
+        train_dataset_labeled_local = data.Multimodal_dataset(x_train_labeled_1,x_train_labeled_2,y_train_labeled)
+        train_labeled_loader = torch.utils.data.DataLoader(
+            train_dataset_labeled_local, batch_size=opt.batch_size,
+            num_workers=opt.num_workers, pin_memory=True, shuffle=True)
         test_loader = test_data_global # client and global model use the same test set
 
         train_data_local_dict[i] = train_loader
         test_data_local_dict[i] = test_loader
         train_data_local_num_dict[i] = x_train_1.shape[0]
+        train_label_data_local_dict[i] = train_labeled_loader
         
     dataset = [train_data_local_dict, test_data_global, test_data_local_dict, train_data_local_num_dict]
     opt.client_num_in_total = CLIENT_NUM
@@ -208,7 +202,7 @@ def main():
         model_trainer.set_model_params(m,w_global)
         local_models.append(m)
     # step5: use fedavgAPI for training
-    fedavgAPI = FedAvgAPI_personal(dataset, opt.device, opt, model_trainer, global_model, local_models)
+    fedavgAPI = FedAvgAPI_personal(dataset,train_label_data_local_dict, opt.device, opt, model_trainer, global_model, local_models)
     fedavgAPI.train()
     
     # # build data loader

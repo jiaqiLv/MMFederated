@@ -1,8 +1,10 @@
+import os
 import numpy as np
 import torch
 from sklearn.model_selection import train_test_split
 import random
 from datetime import datetime
+from os.path import join,exists
 
 MEAN_OF_IMU = [-0.32627436907665514, -0.8661114601303396]
 STD_OF_IMU = [0.6761486428324216, 113.55369543559192]
@@ -65,14 +67,6 @@ class Unimodal_dataset():
 		activity_label = self.labels[idx]
 
 		return sensor_data, activity_label
-
-
-def load_user_data_single(sensor_str:str, user_id:int,label_rate:int):
-	"""
-	sensor_str: sensor type(inertial or skeleton)
-	"""
-	pass
-
 
 		
 def load_class_data_single(sensor_str, activity_class, train_test_flag, label_rate):
@@ -207,6 +201,42 @@ def load_class_data_single(sensor_str, activity_class, train_test_flag, label_ra
 	return data_all_subject
 
 
+def custom_load_class_data_single(sensor_str, activity_class, train_test_flag, label_rate):
+	"""
+	自定义label、unlabel和test数据的读取方式
+	"""
+	data_all_subject = []
+	NUM_OF_TRAIN_SUBJECT = 6
+	# lode labeled data in different labelling rate according to the "label_file_name"
+	train_folder = f'label-27-{label_rate}-percent'
+
+	# train label
+	if train_test_flag == 1:
+		total_file_list = os.listdir(join('../UTD-data/split-6-2/train/',train_folder,'label',sensor_str))
+		subclass_file_list = [item for item in total_file_list if (os.path.basename(item)).split('_')[0] == f'a{activity_class+1}']
+		for file in subclass_file_list:
+			data_sample = np.load(join('../UTD-data/split-6-2/train/',train_folder,'label',sensor_str,file))
+			data_all_subject.extend(data_sample)
+	#test
+	elif train_test_flag == 2:
+		for subject_id in range(2):
+			for test_id in range(4):
+				temp_file = 'a' + str(activity_class+1) + '_s' + str(subject_id + 7) + '_t' + str(test_id + 1)
+				# except a8_s1_t4_depth, a23_s6_t4_depth, a27_s8_t4_depth
+				if temp_file == 'a8_s1_t4' or temp_file == 'a23_s6_t4' or temp_file == 'a27_s8_t4':
+					print("No such file:", temp_file)
+				else:
+					data_sample = np.load('../UTD-data/split-6-2/test/' + sensor_str + '/' + temp_file + '_' + sensor_str + '.npy')
+					data_all_subject.extend(data_sample)
+	# train unlabel
+	elif train_test_flag == 3:
+		total_file_list = os.listdir(join('../UTD-data/split-6-2/train/',train_folder,'unlabel',sensor_str))
+		subclass_file_list = [item for item in total_file_list if (os.path.basename(item)).split('_')[0] == f'a{activity_class+1}']
+		for file in subclass_file_list:
+			data_sample = np.load(join('../UTD-data/split-6-2/train/',train_folder,'unlabel',sensor_str,file))
+			data_all_subject.extend(data_sample)
+	data_all_subject = np.array(data_all_subject)
+	return data_all_subject
 
 
 def sensor_data_normalize(sensor_str, data):
@@ -263,7 +293,6 @@ def load_data(num_of_total_class, num_per_class, train_test_flag, label_rate):
 	print('y.shape:', y.shape)
 
 	return x1, x2, y
-
 
 
 def load_niid_data(num_of_total_class, num_per_class, train_test_flag, label_rate):
@@ -331,29 +360,43 @@ def load_niid_data(num_of_total_class, num_per_class, train_test_flag, label_rat
 	return x1, x2, y
 
 
-def load_niid_data_for_tsne(num_of_total_class, train_test_flag, label_rate,client_id):
-
+def load_niid_data_for_tsne(num_of_total_class, train_test_flag, label_rate,client_id,args,assignmet_class):
+	"""
+	自定义数据集的读取方式
+	"""
 	MAJOR_CLASS_NUM = 5
 	MINOR_CLASS_NUM = 2
 	NUM_PER_MAJOR_CLASS = 19
-	NUM_PER_MINOR_CLASS = 4
+	NUM_PER_MINOR_CLASS = 2
 
 	x1 = []
 	x2 = []
 	y = []
 
 	# step1: extract major class data
-	num_of_major_class = random.sample(range(1, num_of_total_class), MAJOR_CLASS_NUM)
+	if args.use_assignment_class:
+		num_of_major_class = assignmet_class[client_id][0]
+	else:
+		num_of_major_class = random.sample(range(1, num_of_total_class), MAJOR_CLASS_NUM)
 	print("num_of_major_class:", num_of_major_class)
 	for class_id in num_of_major_class:
 		# step1.1: extract all data for a single class
-		data_all_subject_1 = load_class_data_single('inertial', class_id, train_test_flag, label_rate).reshape(-1, 120, 6)
-		data_all_subject_2 = load_class_data_single('skeleton', class_id, train_test_flag, label_rate).reshape(-1, 20, 3, 40)
+		# data_all_subject_1 = load_class_data_single('inertial', class_id, train_test_flag, label_rate).reshape(-1, 120, 6)
+		# data_all_subject_2 = load_class_data_single('skeleton', class_id, train_test_flag, label_rate).reshape(-1, 20, 3, 40)
+
+		# (optional): use custom load_class_data_single
+		data_all_subject_1 = custom_load_class_data_single('inertial', class_id, train_test_flag, label_rate).reshape(-1, 120, 6)
+		data_all_subject_2 = custom_load_class_data_single('skeleton', class_id, train_test_flag, label_rate).reshape(-1, 20, 3, 40)
+
+		# print('data_all_subject_1.shape:', data_all_subject_1.shape)
+		# print('data_all_subject_2.shape:', data_all_subject_2.shape)
 
 		class_all_num_data = data_all_subject_1.shape[0] # total number of data for a single class
 		label_all_subject = np.ones(class_all_num_data) * class_id # label
 
 		# step1.2: random sample data
+		if class_all_num_data < NUM_PER_MAJOR_CLASS:
+			NUM_PER_MAJOR_CLASS = class_all_num_data
 		sample_index = random.sample(range(0, class_all_num_data), NUM_PER_MAJOR_CLASS)
 		temp_data_1 = data_all_subject_1[sample_index]
 		temp_data_2 = data_all_subject_2[sample_index]
@@ -366,14 +409,24 @@ def load_niid_data_for_tsne(num_of_total_class, train_test_flag, label_rate,clie
 	
 		
 	# step2: extract minor class data
-	num_of_minor_class = random.sample(list(set(range(27))-set(num_of_major_class)),MINOR_CLASS_NUM)
+	if args.use_assignment_class:
+		num_of_minor_class = assignmet_class[client_id][1]
+	else:
+		num_of_minor_class = random.sample(list(set(range(27))-set(num_of_major_class)),MINOR_CLASS_NUM)
 	print("num_of_minor_class:", num_of_minor_class)
 	for class_id in num_of_minor_class:
-		data_all_subject_1 = load_class_data_single('inertial', class_id, train_test_flag, label_rate).reshape(-1, 120, 6)
-		data_all_subject_2 = load_class_data_single('skeleton', class_id, train_test_flag, label_rate).reshape(-1, 20, 3, 40)
+		# data_all_subject_1 = load_class_data_single('inertial', class_id, train_test_flag, label_rate).reshape(-1, 120, 6)
+		# data_all_subject_2 = load_class_data_single('skeleton', class_id, train_test_flag, label_rate).reshape(-1, 20, 3, 40)
+
+		# (optional): use custom load_class_data_single
+		data_all_subject_1 = custom_load_class_data_single('inertial', class_id, train_test_flag, label_rate).reshape(-1, 120, 6)
+		data_all_subject_2 = custom_load_class_data_single('skeleton', class_id, train_test_flag, label_rate).reshape(-1, 20, 3, 40)
+
 		class_all_num_data = data_all_subject_1.shape[0]
 		label_all_subject = np.ones(class_all_num_data) * class_id
 		# random sample data
+		if class_all_num_data< NUM_PER_MINOR_CLASS:
+			NUM_PER_MINOR_CLASS = class_all_num_data
 		sample_index = random.sample(range(0, class_all_num_data), NUM_PER_MINOR_CLASS)
 
 		temp_data_1 = data_all_subject_1[sample_index]

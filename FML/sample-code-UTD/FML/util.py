@@ -102,3 +102,6 @@ def save_model(model, opt, epoch, save_file):
     }
     torch.save(state, save_file)
     del state
+
+def remove_nan_elements(tensor):
+    return tensor[~torch.isnan(tensor)]

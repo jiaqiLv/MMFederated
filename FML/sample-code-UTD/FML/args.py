@@ -11,6 +11,8 @@ def parse_option():
                         help='whether to use assignment class')
     parser.add_argument('--use_labeled',type=bool,default=False,
                         help='whether to use labeled data')
+    parser.add_argument('--use_classifier',type=bool,default=False,
+                        help='whether to use classifier to help training')
     parser.add_argument('--print_freq', type=int, default=5,
                         help='print frequency')
     parser.add_argument('--save_freq', type=int, default=50,
@@ -19,7 +21,7 @@ def parse_option():
                         help='batch_size')
     parser.add_argument('--num_workers', type=int, default=16,
                         help='num of workers to use')
-    parser.add_argument('--epochs', type=int, default=300,
+    parser.add_argument('--epochs', type=int, default=5,
                         help='number of training epochs')
     parser.add_argument('--device',type=str,default='cuda:0',
                         help='the device for training')
@@ -39,7 +41,7 @@ def parse_option():
                         help='number of workers in a distributed cluster')
     parser.add_argument('--join_ratio', type=float, default=0.1,
                         help='Ratio for (client each round) / (client num in total)')
-    parser.add_argument('--comm_round', type=int, default=5,
+    parser.add_argument('--comm_round', type=int, default=50,
                         help='how many round of communications we shoud use')
     parser.add_argument('--frequency_of_the_test', type=int, default=1,
                         help='the frequency of the algorithms')

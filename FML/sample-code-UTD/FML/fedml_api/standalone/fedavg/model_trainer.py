@@ -7,7 +7,7 @@ import copy
 import numpy as np
 from torch.utils.data import DataLoader
 
-from FML_design import ConFusionLoss,FeatureConstructor
+from FML_design import ConFusionLoss,FeatureConstructor,ContrastiveLoss
 from tqdm import tqdm
 import math
 from custom_classifier import CustomClassifier
@@ -181,7 +181,7 @@ class MyModelTrainer(object):
     def set_model_params(self, model, model_parameters):
         model.load_state_dict(copy.deepcopy(model_parameters))
 
-    def train(self, model:nn.Module, train_data:DataLoader, device:Optional[str], args, epochs=None, client_idx=None) -> float:
+    def train(self, model:nn.Module,label_train_data:DataLoader, train_data:DataLoader, device:Optional[str], args, epochs=None, client_idx=None) -> float:
         """_summary_
 
         Args:
@@ -195,11 +195,16 @@ class MyModelTrainer(object):
         Returns:
             float: _description_
         """
+        def has_duplicate(tensor):
+            unique_elements, counts = torch.unique(tensor, return_counts=True)
+            return torch.any(counts > 1)
+
         model.to(device)
         model.train()
 
         # criterion = nn.CrossEntropyLoss().to(device)
         criterion = ConFusionLoss()
+        label_criterion = ContrastiveLoss()
         criterion_labeled = nn.CrossEntropyLoss()
 
         optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
@@ -217,12 +222,41 @@ class MyModelTrainer(object):
             batch_loss = []
             batch_loss_labeled = []
             batch_loss_unlabeled = []
+
+            # label data training
+            if args.use_labeled:
+                for label_x1, label_x2, label_y in label_train_data:
+                    label_x1 = label_x1.to(device)
+                    label_x2 = label_x2.to(device)
+                    label_y = label_y.to(device)
+                    """part1: labeled data training"""
+                    if has_duplicate(label_y):
+                        print('label_y:', label_y)
+                        feature1, feature2 = model(label_x1,label_x2)
+                        print('feature1.shape:', feature1.shape)
+                        print('feature2.shape:', feature2.shape)
+                        loss_labeled_1 = label_criterion(feature1,label_y)
+                        loss_labeled_2 = label_criterion(feature2,label_y)
+                        print('loss_labeled_1:', loss_labeled_1)
+                        print('loss_labeled_2:', loss_labeled_2)
+                        loss_labeled = loss_labeled_1 + loss_labeled_2
+                        # zero the parameter gradients
+                        optimizer.zero_grad()                
+                        loss_labeled.backward()
+                        optimizer.step()
+
+                        batch_loss_labeled.append(loss_labeled.item())
+                    else:
+                        print('Contians no duplicate elements!')
+
+            
+            # unlabel data training
             for x1, x2, y in train_data:
                 x1 = x1.to(device)
                 x2 = x2.to(device)
                 y = y.to(device)
 
-                if args.use_labeled:
+                if args.use_classifier:
                     LABEL_DATA_NUM = math.ceil(y.shape[0]*0.2)
                     """divide training data into labeled and unlabeled"""
                     x1_labeled = x1[:LABEL_DATA_NUM]
@@ -237,13 +271,13 @@ class MyModelTrainer(object):
                 features = FeatureConstructor(feature1, feature2,num_positive=9)
                 loss_unlabeled = criterion(features, y.long())
 
-                if args.use_labeled:
+                if args.use_classifier:
                     """part2: labeled data training"""
                     feature1, feature2 = model(x1_labeled,x2_labeled)
                     y_predict = classifier(feature1,feature2)
                     loss_labeled = criterion_labeled(y_predict,y_labeled)
 
-                if args.use_labeled:
+                if args.use_classifier:
                     loss = loss_labeled + loss_unlabeled
                 else:
                     loss = loss_unlabeled
@@ -256,7 +290,7 @@ class MyModelTrainer(object):
                 batch_loss.append(loss.item())
                 batch_loss_unlabeled.append(loss_unlabeled.item())
 
-                if args.use_labeled:
+                if args.use_classifier:
                     batch_loss_labeled.append(loss_labeled.item())
                 else:
                     batch_loss_labeled.append(0)
