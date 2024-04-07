@@ -1,10 +1,12 @@
+import random
 import numpy as np
 import pandas as pd
 import os
 from os.path import exists,join
 import shutil
 
-TEST_DATA_PATH = '/code/MMFederated/FML/sample-code-UTD/UTD-data/data'
+# TEST_DATA_PATH = '/code/MMFederated/FML/sample-code-UTD/UTD-data/data'
+TEST_DATA_PATH = '/code/MMFederated/FML/sample-code-UTD/UTD-data/split-6-2/train/label-27-5-percent/unlabel'
 
 SPLIT_BY_USER_PATH = '/code/MMFederated/FML/sample-code-UTD/UTD-data/split_by_user'
 SPLIT_BY_CLASS_PATH = '/code/MMFederated/FML/sample-code-UTD/UTD-data/split_by_class'
@@ -72,12 +74,56 @@ def divide_by_class(inertial_files,skeleton_files):
                     os.mkdir(join(SPLIT_BY_CLASS_PATH,str(class_id),tensor_type))
                 shutil.copy(file_name,join(SPLIT_BY_CLASS_PATH,str(class_id),tensor_type))
 
+def divide_label_and_unlabel_data(label_percent):
+    """
+    根据label_percent将现有的训练集中labeled和unlabeled数据比例重新进行划分
+    """
+    BASIC_PATH = '/code/MMFederated/FML/sample-code-UTD/UTD-data/split-6-2/train'
+    # step1: make the folder
+    os.makedirs(join(BASIC_PATH,f'label-27-{label_percent}-percent'),exist_ok=True)
+    os.makedirs(join(BASIC_PATH,f'label-27-{label_percent}-percent','label'),exist_ok=True)
+    os.makedirs(join(BASIC_PATH,f'label-27-{label_percent}-percent','unlabel'),exist_ok=True)
+    os.makedirs(join(BASIC_PATH,f'label-27-{label_percent}-percent','label','inertial'),exist_ok=True)
+    os.makedirs(join(BASIC_PATH,f'label-27-{label_percent}-percent','label','skeleton'),exist_ok=True)
+    os.makedirs(join(BASIC_PATH,f'label-27-{label_percent}-percent','unlabel','inertial'),exist_ok=True)
+    os.makedirs(join(BASIC_PATH,f'label-27-{label_percent}-percent','unlabel','skeleton'),exist_ok=True)
+
+
+    inertial_files = os.listdir(join(BASIC_PATH,'total','inertial'))
+    skeleton_files = os.listdir(join(BASIC_PATH,'total','skeleton'))
+    assert len(inertial_files) == len(skeleton_files)
+    labeled_num_per_action = round(len(inertial_files) * label_percent / 2700)
+    for i in range(1,28):
+        inertial_subclass_list = [item for item in inertial_files if item.split('_')[0] == f'a{i}']
+        skeleton_subclass_list = [item for item in skeleton_files if item.split('_')[0] == f'a{i}']
+        assert len(inertial_subclass_list) == len(skeleton_subclass_list)
+        labeled_index = random.sample(range(len(inertial_subclass_list)),labeled_num_per_action)
+        unlabeled_index = list(set(range(len(inertial_subclass_list)))-set(labeled_index))
+        labeled_inertial_subclass_list = [inertial_subclass_list[i] for i in labeled_index]
+        labeled_skeleton_subclass_list = [skeleton_subclass_list[i] for i in labeled_index]
+        unlabeled_inertial_subclass_list = [inertial_subclass_list[i] for i in unlabeled_index]
+        unlabeled_skeleton_subclass_list = [skeleton_subclass_list[i] for i in unlabeled_index]
+        for item in labeled_inertial_subclass_list:
+            file_name = join(BASIC_PATH,'total','inertial',item)
+            shutil.copy(file_name,join(BASIC_PATH,f'label-27-{label_percent}-percent','label','inertial'))
+        for item in labeled_skeleton_subclass_list:
+            file_name = join(BASIC_PATH,'total','skeleton',item)
+            shutil.copy(file_name,join(BASIC_PATH,f'label-27-{label_percent}-percent','label','skeleton'))
+
+        for item in unlabeled_inertial_subclass_list:
+            file_name = join(BASIC_PATH,'total','inertial',item)
+            shutil.copy(file_name,join(BASIC_PATH,f'label-27-{label_percent}-percent','unlabel','inertial'))
+        for item in unlabeled_skeleton_subclass_list:
+            file_name = join(BASIC_PATH,'total','skeleton',item)
+            shutil.copy(file_name,join(BASIC_PATH,f'label-27-{label_percent}-percent','unlabel','skeleton'))
+
+
 if __name__ == '__main__':
-    inertial_files = os.listdir(join(TEST_DATA_PATH,'inertial'))
-    skeleton_files = os.listdir(join(TEST_DATA_PATH,'skeleton'))
+    # inertial_files = os.listdir(join(TEST_DATA_PATH,'inertial'))
+    # skeleton_files = os.listdir(join(TEST_DATA_PATH,'skeleton'))
+    # # divide_by_user(inertial_files,skeleton_files)
+    # # divide_by_class(inertial_files,skeleton_files)
+    # print('len(inertial_files):', len(inertial_files))
+    # print('len(skeleton_files):', len(skeleton_files))
 
-    # divide_by_user(inertial_files,skeleton_files)
-    divide_by_class(inertial_files,skeleton_files)
-
-    print('len(inertial_files):', len(inertial_files))
-    print('len(skeleton_files):', len(skeleton_files))
+    divide_label_and_unlabel_data(20)
