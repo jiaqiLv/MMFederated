@@ -33,9 +33,6 @@ try:
 except ImportError:
     pass
 
-DATA_CLASS = [12,23,4,6,9,10] # 训练时所用到的class
-
-
 def parse_option():
     parser = argparse.ArgumentParser('argument for training')
 
@@ -51,6 +48,8 @@ def parse_option():
                         help='number of training epochs')
     parser.add_argument('--set_subclass',type=bool,default=False,
                         help='whether to use subclass tsne')
+    parser.add_argument('--modality',type=str,default='fused',
+                        help='fused|inertial|skeleton')
 
     # optimization
     parser.add_argument('--learning_rate', type=float, default=1e-2,
@@ -148,20 +147,16 @@ def parse_option():
 
 
 def set_loader(opt):
-    
     # load data (already normalized)
     num_of_train_unlabel = (opt.num_train_unlabel_basic * (6 - opt.label_rate/5) * np.ones(opt.num_class)).astype(int)
     print("opt.num_class", opt.num_class)
     print("num_of_train_unlabel", num_of_train_unlabel)
     #load labeled train and test data
     x_train_1, x_train_2, y_train = data.load_data(opt.num_class, num_of_train_unlabel, 3, opt.label_rate)
-
     train_dataset = data.Multimodal_dataset(x_train_1, x_train_2, y_train)
-
     train_loader = torch.utils.data.DataLoader(
         train_dataset, batch_size=opt.batch_size,
         num_workers=opt.num_workers, pin_memory=True, shuffle=True, drop_last=True)
-
     return train_loader
 
 
@@ -170,14 +165,10 @@ def set_model(opt):
     # classifier = LinearClassifierAttn(num_classes=opt.num_class, guide = opt.guide_flag)
     classifier = LinearClassifierAttn(num_classes=opt.num_class)
     criterion = ConFusionLoss(temperature=opt.temp)
-
     ## load pretrained feature encoders
-    # ckpt_path = opt.ckpt + str(opt.label_rate) + '_lr_0.01_decay_0.9_bsz_32_temp_0.07_trial_0_epoch_200/last.pth'
     ckpt_path = opt.ckpt_path
-
     ckpt = torch.load(ckpt_path)
     state_dict = ckpt['model']
-    
     if torch.cuda.is_available():
         new_state_dict = {}
         for k, v in state_dict.items():
@@ -188,21 +179,18 @@ def set_model(opt):
         classifier = classifier.cuda()
         criterion = criterion.cuda()
         cudnn.benchmark = True
-
     model.load_state_dict(state_dict)
     model = model.to("cuda:0")
     #freeze the MLP in pretrained feature encoders
     # for name, param in model.named_parameters():
     #     if "head" in name:
     #         param.requires_grad = False
-        
     return model, classifier, criterion
 
 
 def train(train_loader, model, criterion, optimizer, epoch, opt):
     """one epoch training"""
     model.train()
-
     batch_time = AverageMeter()
     data_time = AverageMeter()
     losses = AverageMeter()
@@ -234,39 +222,35 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
         f1_list = torch.tensor(f1_list)
         f2_list = torch.tensor(f2_list) 
         l_list = torch.tensor(l_list) 
-    
     f1_list = f1_list.cpu().detach().numpy()
     f2_list = f2_list.cpu().detach().numpy()
     l_list = l_list.cpu().detach().numpy()
-    # print('f1_list.shape:', f1_list.shape)
-    # print('f2_list.shape:', f2_list.shape)
-    # print('l_list.shape:', l_list.shape)
-    x = np.concatenate((f1_list * 0.5, f2_list * 0.5), axis=1)
+
+    # 确定运用tsne的modality
+    if opt.modality == 'fused':
+        x = np.concatenate((f1_list * 0.5, f2_list * 0.5), axis=1)
+    elif opt.modality == 'inertial':
+        x = f1_list
+    elif opt.modality == 'skeleton':
+        x = f2_list
+    
     # x = f1_list * 0.5 + f2_list * 0.5
     lx = [l_list[i] for i in range(l_list.shape[0])] 
     # print('x.shape:',x.shape)
     tsne = TSNE(n_components=2, random_state=42)
     X_reduced = tsne.fit_transform(x)
-    print('X_reduced.shape:', X_reduced.shape)
-
+    print('x.shape:', x.shape)
 
     # 量化指标
-    hopkins_statistic(X_reduced)
-    Calinski_Harabasz(X_reduced,l_list)
-    Silhouette_Coefficient(X_reduced,l_list)
-    Davies_Bouldin(X_reduced,l_list)
+    hopkins_statistic(x)
+    Calinski_Harabasz(x,l_list)
+    Silhouette_Coefficient(x,l_list)
+    Davies_Bouldin(x,l_list)
     
     # 为每个类别选择一个颜色
     unique_labels = np.unique(lx)
     colors = plt.cm.rainbow(np.linspace(0, 1, len(unique_labels)))
     # 创建一个散点图，每个类别的点用不同的颜色表示
-    # for i, label in enumerate(unique_labels):
-    #     if opt.set_subclass:
-    #         if label in ASSIGNMENT_CLASS[opt.client_id][0] or label in ASSIGNMENT_CLASS[opt.client_id][1]:
-    #             plt.scatter(X_reduced[lx == label, 0], X_reduced[lx == label, 1], c=[colors[i]], label=label)
-    #     else:
-    #         plt.scatter(X_reduced[lx == label, 0], X_reduced[lx == label, 1], c=[colors[i]], label=label)
-    
     for i, label in enumerate(unique_labels):
         if opt.set_subclass:
             if label in ASSIGNMENT_CLASS[opt.client_id][0] or label in ASSIGNMENT_CLASS[opt.client_id][1]:
@@ -284,22 +268,13 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
     plt.title("t-SNE visualization of multimodal embeddings")
     plt.xlabel("t-SNE axis 1")
     plt.ylabel("t-SNE axis 2")
-    plt.savefig(f'./pictures/test/{opt.model_type}_{opt.client_id}_{opt.set_subclass}.png')
+    plt.savefig(f'./pictures/new/{opt.model_type}_{opt.modality}_{opt.client_id}_{opt.set_subclass}.png')
     plt.clf()
 
 def main():
     opt = parse_option()
-
     # build data loader
     train_loader = set_loader(opt)
-
-    # # build model and criterion
-    # model, classifier, criterion = set_model(opt)
-    # # build optimizer
-    # optimizer = set_optimizer(opt, model)
-
-    # tensorboard
-
     for i in range(CLIENT_NUM):
         opt.client_id = i
         if opt.model_type == 'global':
@@ -313,7 +288,5 @@ def main():
             optimizer = set_optimizer(opt, model)
             train(train_loader, model, criterion, optimizer, 1, opt)
     
-    
-
 if __name__ == '__main__':
     main()

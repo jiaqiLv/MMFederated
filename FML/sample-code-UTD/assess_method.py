@@ -3,19 +3,6 @@ from sklearn.neighbors import NearestNeighbors
 from numpy.random import uniform
 from sklearn import metrics
 
-# x = np.zeros(n)
-# for i in range(n):
-#     min_dist = np.inf
-#     for j in range(n):
-#         if i != j:
-#             euc_dist = np.linalg.norm(data[i] - data[j])
-#             if euc_dist<min_dist:
-#                 min_dist = euc_dist
-#     x[i] = min_dist
-# step3: Generate a simulated data set (random_D) drawn from a random uniform 
-# distribution with n points and the same variation as the original real data set D
-
-
 def hopkins_statistic(data, sample_rate=0.7):
     # step1: Sample uniformly n points from data
     selected_indices = np.random.choice(data.shape[0],round(data.shape[0]*sample_rate),replace=False)

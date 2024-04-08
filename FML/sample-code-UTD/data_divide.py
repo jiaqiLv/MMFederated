@@ -5,7 +5,6 @@ import os
 from os.path import exists,join
 import shutil
 
-# TEST_DATA_PATH = '/code/MMFederated/FML/sample-code-UTD/UTD-data/data'
 TEST_DATA_PATH = '/code/MMFederated/FML/sample-code-UTD/UTD-data/split-6-2/train/label-27-5-percent/unlabel'
 
 SPLIT_BY_USER_PATH = '/code/MMFederated/FML/sample-code-UTD/UTD-data/split_by_user'
