@@ -10,18 +10,17 @@ parser.add_argument('--type',type=str,default='f1_score',
 
 
 RESULT_FILES = [
-    '/code/MMFederated/FML/sample-code-UTD/FML/model/2024-03-19-09-33-31/global.txt',
-    '/code/MMFederated/FML/sample-code-UTD/FML/model/2024-03-22-03-31-35/client_0/client_0.txt',
-    '/code/MMFederated/FML/sample-code-UTD/FML/model/2024-03-22-03-31-35/client_1/client_1.txt',
-    '/code/MMFederated/FML/sample-code-UTD/FML/model/2024-03-22-03-31-35/client_2/client_2.txt',
-    '/code/MMFederated/FML/sample-code-UTD/FML/model/2024-03-25-03-13-46/global_tune.txt'
+    '/code/MMFederated/FML/sample-code-UTD/FML/model/2024-04-08-02-27-38/global_tune.txt',
+    '/code/MMFederated/FML/sample-code-UTD/FML/model/2024-04-08-02-15-18/client_0/client_0_tune.txt',
+    '/code/MMFederated/FML/sample-code-UTD/FML/model/2024-03-29-09-17-07/global.txt',
+    '/code/MMFederated/FML/sample-code-UTD/FML/model/2024-03-29-09-20-41/client_0/client_0.txt',
 ]
 
 if __name__ == '__main__':
     args = parser.parse_args()
     acc_dict = dict()
     f1_score_dict = dict()
-    
+
     for result_file in RESULT_FILES:
         acc_list = []
         f1_score_list = []

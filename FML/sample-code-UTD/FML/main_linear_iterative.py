@@ -24,8 +24,6 @@ try:
 except ImportError:
     pass
 
-CKPT_FOLDER = '/code/MMFederated/FML/sample-code-UTD/FML/model/2024-03-25-03-13-46'
-
 
 def parse_option():
     parser = argparse.ArgumentParser('argument for training')
@@ -42,6 +40,8 @@ def parse_option():
                         help='number of training epochs')
     parser.add_argument('--iterative_epochs', type=int, default=5,
                         help='number of iterative training epochs')
+    parser.add_argument('--model_type',type=str,default='global',
+                        help='type of model tested (global or client)')
 
     # optimization
     parser.add_argument('--learning_rate', type=float, default=1e-3,
@@ -147,7 +147,7 @@ def set_model(opt):
 
     ## load pretrained feature encoders
     # ckpt_path = opt.ckpt + str(opt.label_rate) + '_lr_0.01_decay_0.9_bsz_32_temp_0.07_trial_0_epoch_300/last.pth'
-    ckpt_path = os.path.join(CKPT_FOLDER,'4.pth')
+    ckpt_path = os.path.join(opt.ckpt,'10.pth')
     ckpt = torch.load(ckpt_path, map_location='cpu')
     state_dict = ckpt['model']
 
@@ -297,12 +297,14 @@ def validate(val_loader, model, classifier, criterion, opt):
         'F1-score {F1score_test:.3f}\t'.format(top1=top1, F1score_test=F1score_test))
 
     # client
-    # CLIENT_NAME = CKPT_FOLDER.split('/')[-1]
-    # with open(os.path.join(CKPT_FOLDER,F'{CLIENT_NAME}.txt'),'a') as file:
-    #     file.write(f'acc:{top1.avg},f1-score:{F1score_test}\n')
+    if opt.model_type == 'client':
+        CLIENT_NAME = (opt.ckpt).split('/')[-1]
+        with open(os.path.join(opt.ckpt,F'{CLIENT_NAME}.txt'),'a') as file:
+            file.write(f'acc:{top1.avg},f1-score:{F1score_test}\n')
     # global
-    with open(os.path.join(CKPT_FOLDER,'global.txt'),'a') as file:
-        file.write(f'acc:{top1.avg},f1-score:{F1score_test}\n')
+    elif opt.model_type == 'global':
+        with open(os.path.join(opt.ckpt,'global.txt'),'a') as file:
+            file.write(f'acc:{top1.avg},f1-score:{F1score_test}\n')
     return losses.avg, top1.avg, confusion, F1score_test
 
 
