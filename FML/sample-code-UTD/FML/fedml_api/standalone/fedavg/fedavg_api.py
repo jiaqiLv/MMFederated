@@ -198,6 +198,12 @@ class FedAvgAPI_personal(object):
 
         self.global_test_loss = []
         self.global_test_acc = []
+
+        # logging settings
+        self.formatted_time = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+        if not os.path.exists(f'model/{self.formatted_time}'):
+            os.mkdir(f'model/{self.formatted_time}')
+        logging.basicConfig(filename=f'model/{self.formatted_time}/log.log',level=logging.INFO)
         
 
     def _setup_clients(self, train_data_local_num_dict, test_data_global, test_data_local_dict, train_data_local_dict,train_label_data_local_dict, model_trainer, local_models):
@@ -215,7 +221,6 @@ class FedAvgAPI_personal(object):
         for idx, client in enumerate(self.client_list):
             self.model_trainer.set_model_params(client.model, w_global)
         
-        formatted_time = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         # step2: training
         for round_idx in range(1,self.args.comm_round+1):
 
@@ -245,19 +250,16 @@ class FedAvgAPI_personal(object):
             # elif round_idx % self.args.frequency_of_the_test == 0:
             #     self._local_test_on_all_clients(round_idx)
             #     self._global_test(round_idx)
-
-            if not os.path.exists(f'model/{formatted_time}'):
-                    os.mkdir(f'model/{formatted_time}')
             
             if round_idx%self.args.save_freq==0:
                 if self.args.use_fl:
                     # step2.4: save model
-                    save_model(model=self.model_global,opt=self.args,epoch=round_idx,save_file=f'model/{formatted_time}/{round_idx}.pth')
+                    save_model(model=self.model_global,opt=self.args,epoch=round_idx,save_file=f'model/{self.formatted_time}/{round_idx}.pth')
                 else:
                     for i in range(len(self.client_list)):
-                        if not os.path.exists(f'model/{formatted_time}/client_{i}'):
-                            os.mkdir(f'model/{formatted_time}/client_{i}')
-                        save_model(model=self.client_list[i].model,opt=self.args,epoch=round_idx,save_file=f'model/{formatted_time}/client_{i}/{round_idx}.pth')
+                        if not os.path.exists(f'model/{self.formatted_time}/client_{i}'):
+                            os.mkdir(f'model/{self.formatted_time}/client_{i}')
+                        save_model(model=self.client_list[i].model,opt=self.args,epoch=round_idx,save_file=f'model/{self.formatted_time}/client_{i}/{round_idx}.pth')
         
         logging.info('avg_client_test_acc = {}'.format(self.avg_client_test_acc))
         logging.info('avg_client_test_loss = {}'.format(self.avg_client_test_loss))

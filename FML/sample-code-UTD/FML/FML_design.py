@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
-from .util import remove_nan_elements
+from util import remove_nan_elements
 
 def FeatureConstructor(f1, f2, num_positive):
     fusion_weight = np.arange(1, num_positive + 1) / 10#(0.1, 0,2, ..., 0.9)
@@ -101,25 +101,24 @@ class ContrastiveLoss(nn.Module):
         features: 特征表示，形状为 (bs, feature_dim)
         labels: 数据标签，形状为 (bs,)
         """
-        similarity_matrix = F.cosine_similarity(features.unsqueeze(1), features.unsqueeze(0), dim=2)
-        # print('similarity_matrix:\n', similarity_matrix)
+        # 1. cos对比相似度
+        # similarity_matrix = F.cosine_similarity(features.unsqueeze(1), features.unsqueeze(0), dim=2)
+        # 2. 点积相似度
+        similarity_matrix = torch.matmul(features,features.t())
+
         labels = labels[:, None]
         mask = torch.eq(labels, labels.T).float()
-        # print('mask:\n', mask)
 
         # TODO: 不移除对角线上的1
         # positive_mask = mask.fill_diagonal_(0)
         positive_mask = mask
-        # print('positive_mask:\n', positive_mask)
 
         # 计算对比损失
         logits = similarity_matrix / self.temperature
         exp_logits = torch.exp(logits) * (1 - mask)
         log_prob = logits - torch.log(exp_logits.sum(1, keepdim=True))
-        # print('log_prob:\n', log_prob)
         mean_log_prob_pos = (positive_mask * log_prob).sum(1) / positive_mask.sum(1)
         # mean_log_prob_pos = remove_nan_elements(mean_log_prob_pos)# TODO: 移除nan
-        # print('mean_log_prob_pos:', mean_log_prob_pos)
         loss = -mean_log_prob_pos
         loss = loss.mean()
         return loss

@@ -28,6 +28,8 @@ from fedml_api.data_preprocessing.data_loader_default import create_data_loaders
 from fedml_api.utils.add_args import add_args
 from args import parse_option
 
+import logging
+
 try:
     import apex
     from apex import amp, optimizers
@@ -126,4 +128,8 @@ def main():
     fedavgAPI.train()
     
 if __name__ == '__main__':
+    formatted_time = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+    if not os.path.exists(f'model/{formatted_time}'):
+        os.mkdir(f'model/{formatted_time}')
+    logging.basicConfig(filename=f'model/{formatted_time}/log.log',level=logging.INFO)
     main()
