@@ -200,7 +200,7 @@ class FedAvgAPI_personal(object):
         self.global_test_acc = []
 
         # logging settings
-        self.formatted_time = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+        self.formatted_time = args.formatted_time
         if not os.path.exists(f'model/{self.formatted_time}'):
             os.mkdir(f'model/{self.formatted_time}')
         logging.basicConfig(filename=f'model/{self.formatted_time}/log.log',level=logging.INFO)

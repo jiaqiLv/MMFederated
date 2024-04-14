@@ -54,8 +54,13 @@ def set_model(opt):
     return model, criterion
 
 def main():
+    formatted_time = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+    if not os.path.exists(f'model/{formatted_time}'):
+        os.mkdir(f'model/{formatted_time}')
+    logging.basicConfig(filename=f'model/{formatted_time}/log.log',level=logging.INFO)
     # step1: parameter definition
     opt = parse_option()
+    opt.formatted_time = formatted_time
     # step2: test dataset loading
     num_of_train_unlabel = (opt.num_train_unlabel_basic * (20 - opt.label_rate/5) * np.ones(opt.num_class)).astype(int)
     """
@@ -128,8 +133,4 @@ def main():
     fedavgAPI.train()
     
 if __name__ == '__main__':
-    formatted_time = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-    if not os.path.exists(f'model/{formatted_time}'):
-        os.mkdir(f'model/{formatted_time}')
-    logging.basicConfig(filename=f'model/{formatted_time}/log.log',level=logging.INFO)
     main()
