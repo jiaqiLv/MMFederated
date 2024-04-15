@@ -89,6 +89,21 @@ class ConFusionLoss(nn.Module):
         loss = loss.view(anchor_count, batch_size).mean()
 
         return loss
+    
+class CustomContrastiveLoss(nn.Module):
+    def __init__(self,temperature=0.5) -> None:
+        super(CustomContrastiveLoss,self).__init__()
+        self.temperature = temperature
+        self.margin = 1.0
+    
+    def forward(self,features,labels):
+        euclidean_distance = torch.cdist(features,features,p=2)
+        labels = labels[:, None]
+        mask = torch.eq(labels, labels.T).float()
+        loss_positive = mask * torch.pow(euclidean_distance, 2)
+        loss_negative = (1-mask) * torch.pow(torch.clamp(self.margin - euclidean_distance, min=0.0), 2)
+        loss_contrastive = loss_positive + loss_negative
+        return loss_contrastive.mean()
 
 class ContrastiveLoss(nn.Module):
     def __init__(self,temperature=0.5) -> None:
@@ -125,9 +140,10 @@ class ContrastiveLoss(nn.Module):
 
 # Contrast Learning Test
 if __name__ == '__main__':
-    f1 = torch.rand(23,128)
-    f2 = torch.rand(23,128)
-    fused_f = FeatureConstructor(f1,f2,10)
-    print(fused_f.shape)
-    mask = torch.eye(23, dtype=torch.float32)
-    print(mask)
+    f1 = torch.rand(6,128)
+    f2 = torch.rand(6,128)
+    label = torch.randint(0,5,(6,))
+    print(label)
+    loss = CustomContrastiveLoss()
+    output = loss(f1,label)
+    print(output)

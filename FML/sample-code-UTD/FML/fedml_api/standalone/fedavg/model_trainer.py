@@ -223,32 +223,6 @@ class MyModelTrainer(object):
             batch_loss_labeled = []
             batch_loss_unlabeled = []
 
-            # label data training
-            if args.use_labeled:
-                for label_x1, label_x2, label_y in label_train_data:
-                    label_x1 = label_x1.to(device)
-                    label_x2 = label_x2.to(device)
-                    label_y = label_y.to(device)
-                    """part1: labeled data training"""
-                    if has_duplicate(label_y):
-                        # print('label_y:', label_y)
-                        feature1, feature2 = model(label_x1,label_x2)
-                        # print('feature1.shape:', feature1.shape)
-                        # print('feature2.shape:', feature2.shape)
-                        loss_labeled_1 = label_criterion(feature1,label_y)
-                        loss_labeled_2 = label_criterion(feature2,label_y)
-                        # print('loss_labeled_1:', loss_labeled_1)
-                        # print('loss_labeled_2:', loss_labeled_2)
-                        loss_labeled = loss_labeled_1 + loss_labeled_2
-                        # zero the parameter gradients
-                        optimizer.zero_grad()                
-                        loss_labeled.backward()
-                        optimizer.step()
-
-                        batch_loss_labeled.append(loss_labeled.item())
-                    else:
-                        print('Contians no duplicate elements!')
-
             
             # unlabel data training
             for x1, x2, y in train_data:
@@ -294,6 +268,33 @@ class MyModelTrainer(object):
                     batch_loss_labeled.append(loss_labeled.item())
                 else:
                     batch_loss_labeled.append(0)
+                    
+            
+            # label data training
+            if args.use_labeled:
+                for label_x1, label_x2, label_y in label_train_data:
+                    label_x1 = label_x1.to(device)
+                    label_x2 = label_x2.to(device)
+                    label_y = label_y.to(device)
+                    """part1: labeled data training"""
+                    if has_duplicate(label_y):
+                        # print('label_y:', label_y)
+                        feature1, feature2 = model(label_x1,label_x2)
+                        # print('feature1.shape:', feature1.shape)
+                        # print('feature2.shape:', feature2.shape)
+                        loss_labeled_1 = label_criterion(feature1,label_y)
+                        loss_labeled_2 = label_criterion(feature2,label_y)
+                        # print('loss_labeled_1:', loss_labeled_1)
+                        # print('loss_labeled_2:', loss_labeled_2)
+                        loss_labeled = loss_labeled_1 + loss_labeled_2
+                        # zero the parameter gradients
+                        optimizer.zero_grad()                
+                        loss_labeled.backward()
+                        optimizer.step()
+
+                        batch_loss_labeled.append(loss_labeled.item())
+                    else:
+                        print('Contians no duplicate elements!')
                     
 
                 
