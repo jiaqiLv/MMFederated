@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
-from util import remove_nan_elements
+# from util import remove_nan_elements
 
 def FeatureConstructor(f1, f2, num_positive):
     fusion_weight = np.arange(1, num_positive + 1) / 10#(0.1, 0,2, ..., 0.9)
