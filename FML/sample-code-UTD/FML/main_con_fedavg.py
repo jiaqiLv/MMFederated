@@ -24,6 +24,7 @@ from tqdm import tqdm
 
 from fedml_api.standalone.fedavg.fedavg_api import FedAvgAPI_personal
 from fedml_api.standalone.fedavg.model_trainer import MyModelTrainer
+from fedml_api.standalone.fedavg.model_trainer_fedprox import FedProxTrainer
 from fedml_api.data_preprocessing.data_loader_default import create_data_loaders
 from fedml_api.utils.add_args import add_args
 from args import parse_option
@@ -75,7 +76,8 @@ def main():
             test_dataset, batch_size=1,
             num_workers=opt.num_workers, pin_memory=True, shuffle=True)
     # step3: trainer
-    model_trainer = MyModelTrainer()
+    # model_trainer = MyModelTrainer()
+    model_trainer = FedProxTrainer()
     # step4: load training data for each client
     train_data_local_dict = dict()
     train_data_local_num_dict = dict()
@@ -121,6 +123,7 @@ def main():
     opt.client_num_in_total = CLIENT_NUM
     # step5: model group
     global_model, criterion = set_model(opt)
+    global_model.to(opt.device)
     w_global = model_trainer.get_model_params(global_model)
 
     local_models = []

@@ -7,7 +7,7 @@ import copy
 import numpy as np
 from torch.utils.data import DataLoader
 
-from FML_design import ConFusionLoss,FeatureConstructor,ContrastiveLoss
+from FML_design import ConFusionLoss,FeatureConstructor,ContrastiveLoss,CustomContrastiveLoss
 from tqdm import tqdm
 import math
 from custom_classifier import CustomClassifier
@@ -204,7 +204,10 @@ class MyModelTrainer(object):
 
         # criterion = nn.CrossEntropyLoss().to(device)
         criterion = ConFusionLoss()
-        label_criterion = ContrastiveLoss()
+        # TODO: 修改criterion_labeled以提高acc
+        # label_criterion = ContrastiveLoss()
+        label_criterion = CustomContrastiveLoss()
+
         criterion_labeled = nn.CrossEntropyLoss()
 
         optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
@@ -278,20 +281,14 @@ class MyModelTrainer(object):
                     label_y = label_y.to(device)
                     """part1: labeled data training"""
                     if has_duplicate(label_y):
-                        # print('label_y:', label_y)
                         feature1, feature2 = model(label_x1,label_x2)
-                        # print('feature1.shape:', feature1.shape)
-                        # print('feature2.shape:', feature2.shape)
                         loss_labeled_1 = label_criterion(feature1,label_y)
                         loss_labeled_2 = label_criterion(feature2,label_y)
-                        # print('loss_labeled_1:', loss_labeled_1)
-                        # print('loss_labeled_2:', loss_labeled_2)
                         loss_labeled = loss_labeled_1 + loss_labeled_2
                         # zero the parameter gradients
                         optimizer.zero_grad()                
                         loss_labeled.backward()
                         optimizer.step()
-
                         batch_loss_labeled.append(loss_labeled.item())
                     else:
                         print('Contians no duplicate elements!')

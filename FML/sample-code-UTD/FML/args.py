@@ -23,7 +23,7 @@ def parse_option():
                         help='num of workers to use')
     parser.add_argument('--epochs', type=int, default=5,
                         help='number of training epochs')
-    parser.add_argument('--device',type=str,default='cuda:0',
+    parser.add_argument('--device',type=str,default='cuda',
                         help='the device for training')
     
     # fedml_api/utils/add_args.py

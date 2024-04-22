@@ -4,7 +4,7 @@ python3 main_linear_iterative.py \
     --learning_rate 0.001 \
     --guide_flag 1 \
     --method iterative \
-    --ckpt /code/MMFederated/FML/sample-code-UTD/FML/model/2024-04-08-02-27-38 \
+    --ckpt /code/MMFederated/FML/sample-code-UTD/FML/model/2024-04-19-13-45-55 \
     --model_type global \
 
 

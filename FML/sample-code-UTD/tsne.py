@@ -233,6 +233,8 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
         x = f1_list
     elif opt.modality == 'skeleton':
         x = f2_list
+    elif opt.modality == 'gather':
+        x = np.concatenate((f1_list,f2_list),axis=0)
     
     # x = f1_list * 0.5 + f2_list * 0.5
     lx = [l_list[i] for i in range(l_list.shape[0])] 
@@ -242,10 +244,10 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
     print('x.shape:', x.shape)
 
     # 量化指标
-    hopkins_statistic(x)
-    Calinski_Harabasz(x,l_list)
-    Silhouette_Coefficient(x,l_list)
-    Davies_Bouldin(x,l_list)
+    # hopkins_statistic(x)
+    # Calinski_Harabasz(x,l_list)
+    # Silhouette_Coefficient(x,l_list)
+    # Davies_Bouldin(x,l_list)
     
     # 为每个类别选择一个颜色
     unique_labels = np.unique(lx)
@@ -254,13 +256,20 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
     for i, label in enumerate(unique_labels):
         if opt.set_subclass:
             if label in ASSIGNMENT_CLASS[opt.client_id][0] or label in ASSIGNMENT_CLASS[opt.client_id][1]:
-                # sns.scatterplot(x=X_reduced[lx == label, 0],y=X_reduced[lx == label, 1],hue=label)
                 plt.rcParams['font.size'] = 5
-                plt.scatter(X_reduced[lx == label, 0], X_reduced[lx == label, 1], c=[colors[i]], label=label,s=25)
+                if opt.modality == 'gather':
+                    plt.scatter(X_reduced[:len(X_reduced)//2][lx == label, 0], X_reduced[:len(X_reduced)//2][lx == label, 1], c=[colors[i]], label=label,s=25,marker='*')
+                    plt.scatter(X_reduced[len(X_reduced)//2:][lx == label, 0], X_reduced[len(X_reduced)//2:][lx == label, 1], c=[colors[i]], label=label,s=25,marker='o')
+                else:
+                    plt.scatter(X_reduced[lx == label, 0], X_reduced[lx == label, 1], c=[colors[i]], label=label,s=25)
         else:
-            # sns.scatterplot(x=X_reduced[lx == label, 0],y=X_reduced[lx == label, 1],hue=label)
             plt.rcParams['font.size'] = 5
-            plt.scatter(X_reduced[lx == label, 0], X_reduced[lx == label, 1], c=[colors[i]], label=label,s=25)
+            if opt.modality == 'gather':
+                    plt.scatter(X_reduced[:len(X_reduced)//2][lx == label, 0], X_reduced[:len(X_reduced)//2][lx == label, 1], c=[colors[i]], label=label,s=25,marker='*')
+                    plt.scatter(X_reduced[len(X_reduced)//2:][lx == label, 0], X_reduced[len(X_reduced)//2:][lx == label, 1], c=[colors[i]], label=label,s=25,marker='o')
+            else:
+                plt.scatter(X_reduced[lx == label, 0], X_reduced[lx == label, 1], c=[colors[i]], label=label,s=25)
+
     if opt.set_subclass:
         plt.legend(bbox_to_anchor=(0.5, 0), loc="lower center",ncol=7)
     else:

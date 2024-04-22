@@ -14,6 +14,10 @@ RESULT_FILES = [
     '/code/MMFederated/FML/sample-code-UTD/FML/model/2024-04-08-02-15-18/client_0/client_0_tune.txt',
     '/code/MMFederated/FML/sample-code-UTD/FML/model/2024-03-29-09-17-07/global.txt',
     '/code/MMFederated/FML/sample-code-UTD/FML/model/2024-03-29-09-20-41/client_0/client_0.txt',
+    '/code/MMFederated/FML/sample-code-UTD/FML/model/2024-04-12-10-01-25/global_dot.txt',
+    '/code/MMFederated/FML/sample-code-UTD/FML/model/2024-04-15-03-10-14/global_euclidean.txt',
+    '/code/MMFederated/FML/sample-code-UTD/FML/model/2024-04-19-13-45-55/global_fedprox_50.txt',
+    '/code/MMFederated/FML/sample-code-UTD/FML/model/2024-04-19-13-45-55/global_fedprox_10.txt'
 ]
 
 if __name__ == '__main__':

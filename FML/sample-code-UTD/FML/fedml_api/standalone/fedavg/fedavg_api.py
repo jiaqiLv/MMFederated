@@ -209,14 +209,22 @@ class FedAvgAPI_personal(object):
     def _setup_clients(self, train_data_local_num_dict, test_data_global, test_data_local_dict, train_data_local_dict,train_label_data_local_dict, model_trainer, local_models):
         logging.info("############setup_clients (START)#############")
         for client_idx in range(self.args.client_num_in_total):
-            c = Client(client_idx,train_label_data_local_dict[client_idx], train_data_local_dict[client_idx], test_data_local_dict[client_idx],
-                       train_data_local_num_dict[client_idx], self.args, self.device, model_trainer, local_models[client_idx])
+            c = Client( client_idx,
+                        train_label_data_local_dict[client_idx], 
+                        train_data_local_dict[client_idx], 
+                        test_data_local_dict[client_idx],
+                        train_data_local_num_dict[client_idx],
+                        self.args, 
+                        self.device, 
+                        model_trainer, 
+                        local_models[client_idx],
+                        self.model_global
+                        )
             self.client_list.append(c)
         logging.info("############setup_clients (END)#############")
 
     def train(self):
         w_global = self.model_trainer.get_model_params(self.model_global) # global model weight
-        
         # step1: init client model weight (using global weight)
         for idx, client in enumerate(self.client_list):
             self.model_trainer.set_model_params(client.model, w_global)
@@ -227,6 +235,7 @@ class FedAvgAPI_personal(object):
             logging.info("################Communication round : {}".format(round_idx))
 
             w_locals = [] # record the weight of each client
+            
 
             # step2.1: train individually for each client
             for idx, client in enumerate(self.client_list):
