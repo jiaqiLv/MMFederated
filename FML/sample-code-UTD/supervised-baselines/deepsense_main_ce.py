@@ -63,7 +63,7 @@ def parse_option():
                         help='num_train_basic')
     parser.add_argument('--num_test_basic', type=int, default=8,
                         help='num_test_basic')
-    parser.add_argument('--label_rate', type=int, default=5,
+    parser.add_argument('--label_rate', type=int, default=10,
                         help='label_rate')
 
     # other setting
@@ -73,7 +73,7 @@ def parse_option():
                         help='using synchronized batch normalization')
     parser.add_argument('--warm', action='store_true',
                         help='warm-up for large batch training')
-    parser.add_argument('--trial', type=str, default='3',
+    parser.add_argument('--trial', type=int, default=1,
                         help='id for recording multiple runs')
 
     opt = parser.parse_args()
@@ -87,9 +87,9 @@ def parse_option():
     for it in iterations:
         opt.lr_decay_epochs.append(int(it))
 
-    opt.model_name = 'deepsense_{}_{}_lr_{}_decay_{}_bsz_{}_trial_{}'.\
+    opt.model_name = 'deepsense_{}_{}_lr_{}_decay_{}_bsz_{}_trial_{}_label_{}'.\
         format(opt.dataset, opt.model, opt.learning_rate, opt.weight_decay,
-               opt.batch_size, opt.trial)
+               opt.batch_size, opt.trial,opt.label_rate)
 
     if opt.cosine:
         opt.model_name = '{}_cosine'.format(opt.model_name)
@@ -154,8 +154,8 @@ def set_model(opt):
         model = apex.parallel.convert_syncbn_model(model)
 
     if torch.cuda.is_available():
-        if torch.cuda.device_count() > 1:
-            model = torch.nn.DataParallel(model)
+        # if torch.cuda.device_count() > 1:
+        #     model = torch.nn.DataParallel(model)
         model = model.cuda()
         criterion = criterion.cuda()
         cudnn.benchmark = True
@@ -184,7 +184,10 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
             labels = labels.cuda()
         bsz = labels.shape[0]
 
+        print('input_data1.shape:', input_data1.shape)
+        print('input_data2.shape:', input_data2.shape)
         output = model(input_data1, input_data2)
+        print('output.shape:', output.shape)
         
         loss = criterion(output, labels)
         acc, _ = accuracy(output, labels, topk=(1, 5))
@@ -295,6 +298,10 @@ def main():
 
         # build model and criterion
         model, criterion = set_model(opt)
+        """(optional): load model from pretrained ckpt"""
+        # ckpt = torch.load('/code/MMFederated/FML/sample-code-UTD/FML/save/FML/UTD-MHAD_models/FML_UTD-MHAD_MyUTDmodel_label_10_lr_0.01_decay_0.9_bsz_24_temp_0.07_trial_1_epoch_300/ckpt_epoch_300.pth')
+        # state_dict = ckpt['model']
+        # model.load_state_dict(state_dict)
 
         # build optimizer
         optimizer = set_optimizer(opt, model)

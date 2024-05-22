@@ -16,6 +16,7 @@ from util import adjust_learning_rate, warmup_learning_rate
 from util import set_optimizer, save_model
 from FML_model_guide import MyUTDModelFeature
 from FML_design import FeatureConstructor, ConFusionLoss
+from focal_loss.focal_loss import FOCALLoss
 import data_pre as data
 
 from tqdm import tqdm
@@ -29,6 +30,8 @@ try:
 except ImportError:
     pass
 
+from params.train_params import parse_train_params
+args = parse_train_params()
 
 def parse_option():
     parser = argparse.ArgumentParser('argument for training')
@@ -37,7 +40,7 @@ def parse_option():
                         help='print frequency')
     parser.add_argument('--save_freq', type=int, default=50,
                         help='save frequency')
-    parser.add_argument('--batch_size', type=int, default=32,
+    parser.add_argument('--batch_size', type=int, default=24,
                         help='batch_size')
     parser.add_argument('--num_workers', type=int, default=16,
                         help='num of workers to use')
@@ -66,7 +69,7 @@ def parse_option():
                         help='num_train_basic')
     parser.add_argument('--num_train_unlabel_basic', type=int, default=1,
                         help='num_train_unlabel_basic')
-    parser.add_argument('--label_rate', type=int, default=5,
+    parser.add_argument('--label_rate', type=int, default=10,
                         help='label_rate')
 
     # method
@@ -86,7 +89,7 @@ def parse_option():
                         help='using synchronized batch normalization')
     parser.add_argument('--warm', action='store_true',
                         help='warm-up for large batch training')
-    parser.add_argument('--trial', type=int, default='3',
+    parser.add_argument('--trial', type=int, default=1,
                         help='id for recording multiple runs')
 
     opt = parser.parse_args()
@@ -153,7 +156,8 @@ def set_loader(opt):
 
 def set_model(opt):
     model = MyUTDModelFeature(input_size=1)
-    criterion = ConFusionLoss(temperature=opt.temp)
+    # criterion = ConFusionLoss(temperature=opt.temp)
+    criterion = FOCALLoss(args=args)
 
     # enable synchronized Batch Normalization
     if opt.syncBN:
@@ -186,14 +190,15 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
             input_data2 = input_data2.cuda()
         bsz = input_data1.shape[0]
 
-        # print('input_data1.shape:', input_data1.shape)
-        # print('input_data2.shape:', input_data2.shape)
         # compute loss
         feature1, feature2 = model(input_data1, input_data2)
 
-        features = FeatureConstructor(feature1, feature2, opt.num_positive)
+        # features = FeatureConstructor(feature1, feature2, opt.num_positive)
+        # loss = criterion(features)
 
-        loss = criterion(features)
+        # print('feature1.shape:', feature1.shape)
+        # print('feature2.shape:', feature2.shape)
+        loss = criterion(feature1,feature2)
 
         # update metric
         losses.update(loss.item(), bsz)
@@ -249,15 +254,13 @@ def main():
         if epoch % opt.save_freq == 0:
             save_file = os.path.join(
                 opt.save_folder, 'ckpt_epoch_{epoch}.pth'.format(epoch=epoch))
-            save_model(model, optimizer, opt, epoch, save_file)
+            save_model(model, opt, epoch, save_file)
+            # save_model(model, optimizer, opt, epoch, save_file)
 
     # save the last model
     save_file = os.path.join(
         opt.save_folder, 'last.pth')
-    save_model(model, optimizer, opt, opt.epochs, save_file)
-    print("num_positive:", opt.num_positive)
-    print("label_rate:", opt.label_rate)
-    
+    save_model(model, opt, opt.epochs, save_file)
 
 if __name__ == '__main__':
     main()

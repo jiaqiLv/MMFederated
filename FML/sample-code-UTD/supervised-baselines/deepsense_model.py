@@ -89,8 +89,6 @@ class cnn_layers_2(nn.Module):
 
         return x
 
-
-
 class MyUTDmodel(nn.Module):
     """Model for human-activity-recognition."""
     def __init__(self, input_size, num_classes):

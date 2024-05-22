@@ -244,10 +244,10 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
     print('x.shape:', x.shape)
 
     # 量化指标
-    # hopkins_statistic(x)
-    # Calinski_Harabasz(x,l_list)
-    # Silhouette_Coefficient(x,l_list)
-    # Davies_Bouldin(x,l_list)
+    hopkins_statistic(x)
+    Calinski_Harabasz(x,l_list)
+    Silhouette_Coefficient(x,l_list)
+    Davies_Bouldin(x,l_list)
     
     # 为每个类别选择一个颜色
     unique_labels = np.unique(lx)

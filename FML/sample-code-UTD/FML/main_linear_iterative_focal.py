@@ -16,7 +16,6 @@ from util import set_optimizer
 from FML_model_guide import MyUTDModelFeature, LinearClassifierAttn
 import data_pre as data
 from sklearn.metrics import f1_score
-import os
 
 try:
     import apex
@@ -36,12 +35,10 @@ def parse_option():
                         help='batch_size')
     parser.add_argument('--num_workers', type=int, default=16,
                         help='num of workers to use')
-    parser.add_argument('--epochs', type=int, default=100,
+    parser.add_argument('--epochs', type=int, default=500,
                         help='number of training epochs')
     parser.add_argument('--iterative_epochs', type=int, default=5,
                         help='number of iterative training epochs')
-    parser.add_argument('--model_type',type=str,default='global',
-                        help='type of model tested (global or client)')
 
     # optimization
     parser.add_argument('--learning_rate', type=float, default=1e-3,
@@ -67,7 +64,7 @@ def parse_option():
                         help='num_train_basic')
     parser.add_argument('--num_test_basic', type=int, default=8,#[600,500,400,300,200,100]
                         help='num_test_basic')
-    parser.add_argument('--label_rate', type=int, default=5,#[600,500,400,300,200,100]
+    parser.add_argument('--label_rate', type=int, default=10,#[600,500,400,300,200,100]
                         help='label_rate')
 
     # other setting
@@ -78,9 +75,9 @@ def parse_option():
 
     parser.add_argument('--ckpt', type=str, default='./save/FML/UTD-MHAD_models/FML_UTD-MHAD_MyUTDmodel_label_',
                         help='path to pre-trained model')
-    parser.add_argument('--trial', type=int, default='1',
+    parser.add_argument('--trial', type=int, default='3',
                         help='id for recording multiple runs')
-    parser.add_argument('--guide_flag', type=int, default='1',
+    parser.add_argument('--guide_flag', type=int, default=1,
                         help='id for recording multiple runs')
 
     opt = parser.parse_args()
@@ -147,29 +144,26 @@ def set_model(opt):
 
     ## load pretrained feature encoders
     # ckpt_path = opt.ckpt + str(opt.label_rate) + '_lr_0.01_decay_0.9_bsz_32_temp_0.07_trial_0_epoch_300/last.pth'
-    ckpt_path = os.path.join(opt.ckpt,'10.pth')
 
-    """(optional): temp ckpt"""
     ckpt_path = '/code/MMFederated/FML/sample-code-UTD/FML/save/FML/UTD-MHAD_models/FML_UTD-MHAD_MyUTDmodel_label_10_lr_0.01_decay_0.9_bsz_24_temp_0.07_trial_1_epoch_300/ckpt_epoch_300.pth'
-
     ckpt = torch.load(ckpt_path, map_location='cpu')
     state_dict = ckpt['model']
 
     if torch.cuda.is_available():
-        if torch.cuda.device_count() > 1:
-            model.encoder = torch.nn.DataParallel(model.encoder)
-        else:
-            new_state_dict = {}
-            for k, v in state_dict.items():
-                k = k.replace("module.", "")
-                new_state_dict[k] = v
-            state_dict = new_state_dict
+        # if torch.cuda.device_count() > 1:
+        #     model.encoder = torch.nn.DataParallel(model.encoder)
+        # else:
+        #     new_state_dict = {}
+        #     for k, v in state_dict.items():
+        #         k = k.replace("module.", "")
+        #         new_state_dict[k] = v
+        #     state_dict = new_state_dict
         model = model.cuda()
         classifier = classifier.cuda()
         criterion = criterion.cuda()
         cudnn.benchmark = True
 
-    model.load_state_dict(state_dict)
+    # model.load_state_dict(state_dict)
 
     #freeze the MLP in pretrained feature encoders
     for name, param in model.named_parameters():
@@ -188,6 +182,7 @@ def train(train_loader, model, classifier, criterion, optimizer, epoch, opt):
     # else: 
     #     model.eval()
     #     classifier.train() 
+
     model.train()
     classifier.train() 
 
@@ -209,6 +204,7 @@ def train(train_loader, model, classifier, criterion, optimizer, epoch, opt):
         # compute loss
         feature1, feature2 = model.encoder(input_data1, input_data2)
         output, weight1, weight2 = classifier(feature1, feature2)
+
         loss = criterion(output, labels)
 
         # update metric
@@ -300,15 +296,6 @@ def validate(val_loader, model, classifier, criterion, opt):
     print(' * Acc@1 {top1.avg:.3f}\t'
         'F1-score {F1score_test:.3f}\t'.format(top1=top1, F1score_test=F1score_test))
 
-    # client
-    if opt.model_type == 'client':
-        CLIENT_NAME = (opt.ckpt).split('/')[-1]
-        with open(os.path.join(opt.ckpt,F'{CLIENT_NAME}.txt'),'a') as file:
-            file.write(f'acc:{top1.avg},f1-score:{F1score_test}\n')
-    # global
-    elif opt.model_type == 'global':
-        with open(os.path.join(opt.ckpt,'global.txt'),'a') as file:
-            file.write(f'acc:{top1.avg},f1-score:{F1score_test}\n')
     return losses.avg, top1.avg, confusion, F1score_test
 
 
